@@ -64,6 +64,7 @@ export default function Workspace({ section }: { section: Section }) {
     [clientFilter, setClientFilter] = useState("");
   const activeIssuer = useRef("");
   const [knownIssuers, setKnownIssuers] = useState<Row[]>([]);
+  const [settingsTab, setSettingsTab] = useState<"documents" | "mail" | "technical">("documents");
   const loadSequence = useRef(0);
   const load = useCallback(async (id: string) => {
     if (activeIssuer.current !== id) return;
@@ -305,9 +306,7 @@ export default function Workspace({ section }: { section: Section }) {
     <main className={s.shell}>
       <p>LOGIFA · Espace privé</p>
       <h1>{titles[section]}</h1>
-      {section === "parametres" && (
-        <MailSettings key={issuer} issuer={issuer} />
-      )}
+
       <nav className={s.nav} aria-label="Gestion">
         {(["dashboard", "clients", "devis", "factures", "entreprises", "parametres"] as const).map((key) => (
           <Link key={key} href={key === "dashboard" ? "/" : `/gestion/${key}`} aria-current={section === key ? "page" : undefined}>
@@ -370,44 +369,29 @@ export default function Workspace({ section }: { section: Section }) {
         </div>
       )}
       {section === "parametres" && (
-        <div className={s.settingsGrid}>
-          <Link className={s.settingTile} href="/gestion/entreprises">
-            <strong>Entreprises et fiscalité</strong>
-            <span>Identités émettrices, TVA, coordonnées et logos</span>
-          </Link>
-          <Link className={s.settingTile} href="/devis">
-            <strong>Modèles de devis</strong>
-            <span>Ouvrir l’éditeur de devis et son modèle PDF</span>
-          </Link>
-          <Link className={s.settingTile} href="/facture">
-            <strong>Modèles de factures</strong>
-            <span>Ouvrir l’éditeur de factures et son modèle PDF</span>
-          </Link>
-          <div className={s.settingTile}>
-            <strong>Envoi de documents</strong>
-            <span>Comptes d’expédition et modèles de messages ci-dessous</span>
+        <section className={s.preferences}>
+          <p className={s.intro}>Choisissez ce que vous voulez configurer. Les réglages techniques restent séparés des documents.</p>
+          <div className={s.settingsTabs} role="group" aria-label="Catégorie de paramètres">
+            <button type="button" aria-pressed={settingsTab === "documents"} onClick={() => setSettingsTab("documents")}>Documents et modèles</button>
+            <button type="button" aria-pressed={settingsTab === "mail"} onClick={() => setSettingsTab("mail")}>Envoi par e-mail</button>
+            <button type="button" aria-pressed={settingsTab === "technical"} onClick={() => setSettingsTab("technical")}>Connexions et fiscalité</button>
           </div>
-          <div className={s.settingTile}>
-            <strong>Connexions et clés API</strong>
-            <span>Les clés privées sont configurées sur le serveur, jamais dans le navigateur</span>
-          </div>
-        </div>
-      )}
-      {section === "parametres" && (
-        <div className={s.card}>
-          <h2>Connexion et conformité</h2>
-          <p>
-            Clerk : accès administrateur contrôlé côté serveur. Supabase :{" "}
-            {data ? "connexion disponible" : "non validée"}. L’agent OpenAI
-            reste désactivé par défaut.
-          </p>
-          <p>
-            Validez les entités juridiques, régimes TVA, exigibilité, séquences
-            et mentions avant toute émission. Youtrust : emplacement prévu dans
-            le suivi de signature, aucun abonnement intégré.
-          </p>
-          <Link href="/gestion/entreprises">Configurer les entreprises</Link>
-        </div>
+          {settingsTab === "documents" && (
+            <div className={s.settingsGrid}>
+              <Link className={s.settingTile} href="/devis"><strong>Modèle de devis</strong><span>Éditeur et modèle PDF existants</span></Link>
+              <Link className={s.settingTile} href="/facture"><strong>Modèle de facture</strong><span>Éditeur et modèle PDF existants</span></Link>
+              <Link className={s.settingTile} href="/gestion/documents"><strong>Archives</strong><span>PDF et documents conservés</span></Link>
+            </div>
+          )}
+          {settingsTab === "mail" && <MailSettings key={issuer} issuer={issuer} />}
+          {settingsTab === "technical" && (
+            <div className={s.settingsGrid}>
+              <Link className={s.settingTile} href="/gestion/entreprises"><strong>Entreprises et TVA</strong><span>Profils émetteurs, entités juridiques et paramètres fiscaux</span></Link>
+              <div className={s.settingTile}><strong>Clés API et sécurité</strong><span>Les secrets sont gérés côté serveur dans les variables d’environnement, jamais affichés ici.</span></div>
+              <div className={s.settingTile}><strong>Connexion serveur</strong><span>{data ? "Données serveur disponibles" : "Connexion aux données non validée"}</span></div>
+            </div>
+          )}
+        </section>
       )}
       {section === "entreprises" && (
         <>
@@ -932,9 +916,7 @@ export default function Workspace({ section }: { section: Section }) {
             }
           }}
         >
-          <h2 className={s.wide}>
-            {editing.id ? "Modifier" : "Créer"} · {form}
-          </h2>
+          <div className={s.formHeading}><div><p>Gestion / {form === "client" ? "Clients" : form === "issuer" ? "Entreprises" : form === "legal" ? "Fiscalité" : "Opérations"}</p><h2>{editing.id ? "Modifier" : "Créer"} · {form === "client" ? "fiche client" : form === "issuer" ? "entreprise" : form === "legal" ? "entité juridique" : form}</h2></div><button type="button" onClick={() => setForm(null)}>Fermer ✕</button></div>
           {form === "issuer" && (
             <article
               className={`${s.card} ${s.wide}`}

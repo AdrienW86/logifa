@@ -33,7 +33,7 @@ export async function proposeWithOpenAI(
   try {
     response = await request("https://api.openai.com/v1/responses", {
       method: "POST",
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.timeout(90000),
       headers: {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json",
@@ -41,7 +41,7 @@ export async function proposeWithOpenAI(
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL,
         store: false,
-        max_output_tokens: 4000,
+        max_output_tokens: 12000,
         instructions:
           "Distingue un prix unitaire explicite (price) d'un total HT par prestation (total_ht). Quand seul le total est fourni, price est null : le serveur calcule. Fournis total_ht_evidence et unit_evidence comme citations exactes attribuées à une seule désignation. Aucun budget global ne sert de tarif. document_total_ht ne désigne que le total général HT explicite du devis. Reprends les désignations explicitement données sans préfixe 'À confirmer' ; réserve ce préfixe aux suggestions non établies. " +
           "Pour une demande générale de travaux, propose plusieurs postes techniques pertinents à confirmer, avec une désignation préfixée par 'À confirmer —'. Ces suggestions ne sont jamais des travaux constatés. Conserve chaque poste même si ses données manquent : unité, quantité, prix et TVA inconnus sont null, jamais 1 ou 0 par défaut. N'étends pas une surface globale à tous les postes, notamment faîtages ou longueurs : exige un métrage propre. Signale les données et le périmètre à confirmer dans missing. Les nombres fournis sont des chaînes décimales sans unité ni devise. " +

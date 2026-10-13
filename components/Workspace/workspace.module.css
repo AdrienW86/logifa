@@ -192,3 +192,14 @@
 .testArchive summary {cursor:pointer;font-weight:600;color:#456556;padding:4px 0 14px;}
 .testArchive p {font-size:13px;margin-bottom:12px;color:#586e62;}
 @media(max-width:700px){.businessCards{grid-template-columns:1fr}.businessHeadline{align-items:flex-start}}
+
+/* Paramètres organisés sans déployer tous les formulaires sur une seule page. */
+.intro {color:#526b5e;margin:0 0 18px;}
+.preferences {margin:20px 0;}
+.settingsTabs {display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px;padding-bottom:14px;border-bottom:1px solid #dfebe3;}
+.settingsTabs button {background:#f3f7f4;border:1px solid #d7e5dc;border-radius:11px;padding:12px 16px;font-weight:600;}
+.settingsTabs button[aria-pressed="true"] {background:#164f38;border-color:#164f38;color:#fff;}
+.formHeading {grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #c9dccf;padding-bottom:14px;}
+.formHeading h2 {margin:0!important;}
+.formHeading p {font-size:13px;color:#617b6e;margin-bottom:4px;}
+@media(max-width:700px){.settingsTabs{display:grid;grid-template-columns:1fr}.formHeading{flex-wrap:wrap}}
