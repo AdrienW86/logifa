@@ -82,6 +82,7 @@ export const agentSchema = {
         type: "object",
         additionalProperties: false,
         required: [
+          "type",
           "name",
           "unit",
           "quantity",
@@ -94,6 +95,7 @@ export const agentSchema = {
           "unit_evidence",
         ],
         properties: {
+          type: { type: "string", enum: ["title", "normal"], description: "title pour un en-tête de phase, normal pour une prestation chiffrable." },
           total_ht: {
             ...nullableText,
             description:
@@ -249,6 +251,7 @@ export function validatedAgentProposal(
       Object.keys(item).some(
         (key) =>
           ![
+            "type",
             "name",
             "unit",
             "quantity",
@@ -272,6 +275,16 @@ export function validatedAgentProposal(
     };
     if (!item.name.trim() || item.name.length > 2000)
       throw new Error("AGENT_RESPONSE_INVALID");
+    if (item.type === "title") {
+      // Section headers carry no quantities, rates or taxes and never create a billable item.
+      const titleName = item.name.trim();
+      if (!draft.lines.some((line) => line.type === "title" && line.name.trim().toLocaleLowerCase("fr") === titleName.toLocaleLowerCase("fr")) &&
+          !lines.some((line) => line.type === "title" && line.name.trim().toLocaleLowerCase("fr") === titleName.toLocaleLowerCase("fr"))) {
+        lines.push({ type: "title", name: titleName });
+      }
+      continue;
+    }
+    if (item.type !== "normal") throw new Error("AGENT_RESPONSE_INVALID");
     let name = item.name;
     const explicitName = name.replace(/^À confirmer\s*[—:-]\s*/u, "");
     if (
