@@ -131,6 +131,8 @@ export default function Workspace({ section }: { section: Section }) {
     payments = data?.lists.payments ?? [],
     issuers = knownIssuers,
     entities = data?.lists.legal_entities ?? [];
+  const testIssuers = issuers.filter((row) => /^RECETTE TECHNIQUE/i.test(value(row, "commercial_name")));
+  const businessRows = issuers.filter((row) => !/^RECETTE TECHNIQUE/i.test(value(row, "commercial_name")));
   const metrics = financialMetrics(invoices, payments, data?.balances ?? {});
   const chosenClient = clients.find((row) => row.id === clientFilter);
   const clientMetrics = financialMetrics(
@@ -444,6 +446,9 @@ export default function Workspace({ section }: { section: Section }) {
               ))}
             </ul>
           )}
+          <details className={s.card} style={{marginTop:20}}>
+            <summary style={{cursor:"pointer",fontWeight:600}}>Identités juridiques · {entities.length} fiches — afficher et modifier</summary>
+            <p>Les profils commerciaux et leurs identités juridiques sont séparés pour préserver les numérotations et paramètres fiscaux.</p>
           <div className={s.grid}>
             {entities.map((entity) => (
               <article className={s.card} key={value(entity, "id")}>
@@ -457,6 +462,7 @@ export default function Workspace({ section }: { section: Section }) {
               </article>
             ))}
           </div>
+          </details>
         </>
       )}
       {data && section === "dashboard" && (
@@ -811,8 +817,13 @@ export default function Workspace({ section }: { section: Section }) {
           </>
         )}
       {data && section === "entreprises" && (
-        <div className={s.grid}>
-          {issuers.map((row) => (
+        <section className={s.businessArea}>
+          <div className={s.businessHeadline}>
+            <div><h2>Vos entreprises</h2><p>{businessRows.length} profil(s) hors recettes techniques</p></div>
+            <button disabled={busy} onClick={() => open("issuer")}>+ Ajouter une entreprise</button>
+          </div>
+          <div className={s.businessCards}>
+          {businessRows.map((row) => (
             <article className={s.card} key={value(row, "id")}>
               <h3>{value(row, "commercial_name")}</h3>
               <p>
@@ -838,7 +849,24 @@ export default function Workspace({ section }: { section: Section }) {
               </div>
             </article>
           ))}
-        </div>
+ 
+          </div>
+          {testIssuers.length > 0 && (
+            <details className={s.testArchive}>
+              <summary>Recettes techniques · {testIssuers.length} profils de test (masqués de la liste principale)</summary>
+              <p>Ces profils sont conservés sans modification. Ils ne doivent pas être supprimés automatiquement.</p>
+              <div className={s.businessCards}>
+                {testIssuers.map((row) => (
+                  <article className={s.card} key={value(row, "id")}>
+                    <h3>{value(row, "commercial_name")}</h3>
+                    <p>{row.active === false ? "Inactif" : "Actif"} · données de recette</p>
+                    <button onClick={() => open("issuer", row)}>Consulter / modifier</button>
+                  </article>
+                ))}
+              </div>
+            </details>
+          )}
+        </section>
       )}
       {chosenClient && section !== "clients" && (
         <section className={s.card}>
