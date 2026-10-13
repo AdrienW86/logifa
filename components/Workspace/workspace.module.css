@@ -157,3 +157,26 @@
 .clientDetail ul {padding-left:20px;}
 .clientDetail li {margin:8px 0;}
 @media(max-width:700px){.clientRow{align-items:stretch;flex-direction:column}.clientOpen{width:100%}.settingsGrid{grid-template-columns:1fr}}
+
+/* LOGIFA management visual foundations — same contrast in light and dark OS */
+.shell { max-width:1180px;margin:24px auto 60px;padding:32px 36px;background:#fff;color:#183a30;border:1px solid #e3ebe5;border-radius:18px;box-shadow:0 12px 40px rgba(20,50,38,.055);min-height:65vh; }
+.shell h1 {font-size:clamp(28px,3vw,38px);letter-spacing:-.035em;line-height:1.15;margin:9px 0 25px;color:#163e30;}
+.shell h2 {font-size:21px;letter-spacing:-.02em;color:#163e30;}
+.nav {border-bottom:1px solid #e5ece7;padding:0 0 18px;gap:6px;margin:8px 0 23px;}
+.nav a {padding:10px 14px;border:0;background:transparent;color:#456458;border-radius:9px;font-size:14px;font-weight:600;}
+.nav a:hover,.nav [aria-current="page"] {background:#e5f2e9;color:#145536;}
+.more summary {font-size:14px;font-weight:600;color:#456458;background:transparent;}
+.shell input,.shell select,.shell textarea {background:#fff;color:#173d32;border:1px solid #cedbd2;border-radius:9px;}
+.shell button {background:#e9f3ec;color:#164c32;border:1px solid #bed2c3;font-weight:600;border-radius:9px;}
+.shell button:hover:not(:disabled) {background:#d8ebde;}
+.clientArea {margin-top:22px;}
+.clientList>p {color:#567267;margin:6px 0 18px;}
+.clientRow {padding:12px 16px;border-radius:13px;transition:border-color .2s,box-shadow .2s;}
+.clientRow:hover {border-color:#9cbcaa;box-shadow:0 3px 15px rgba(17,56,34,.06);}
+.clientOpen {padding:7px!important;color:#183a30!important;}
+.clientOpen strong {font-size:17px;color:#183a30;}
+.clientOpen span {font-size:13px;}
+.settingsGrid {margin:20px 0 28px;}
+.settingTile {background:#fff;border-color:#dbe8de;min-height:112px;}
+.settingTile:hover {border-color:#9cbcaa;}
+@media(max-width:700px){.shell{margin:10px 8px 35px;padding:20px 16px;border-radius:14px}.nav{gap:3px}.nav a{font-size:13px;padding:9px 10px}}
