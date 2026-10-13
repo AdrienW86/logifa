@@ -650,9 +650,7 @@ export default function Workspace({ section }: { section: Section }) {
                           "Brouillon sans numéro"}
                       </td>
                       <td>
-                        {section === "clients"
-                          ? `${value(row, "contact_email")} ${value(row, "phone")}`
-                          : String(label(row.client_id))}
+                        {String(label(row.client_id))}
                       </td>
                       <td>
                         {(workflow(row)
@@ -681,74 +679,6 @@ export default function Workspace({ section }: { section: Section }) {
                       </td>
                       <td>
                         <div className={s.actions}>
-                          {section === "clients" && (
-                            <>
-                              <button onClick={() => open("client", row)}>
-                                Modifier
-                              </button>
-                              <button
-                                onClick={() =>
-                                  open("project", { client_id: row.id })
-                                }
-                              >
-                                Nouveau chantier
-                              </button>
-                              <button
-                                disabled={!!row.archived_at || busy}
-                                onClick={() =>
-                                  void mutate(
-                                    "archive-client",
-                                    { issuer_id: issuer, id: row.id },
-                                    "Archiver le client sans supprimer ses documents ?",
-                                  )
-                                }
-                              >
-                                Archiver
-                              </button>
-                              {data.clientLifecycle && row.archived_at ? (
-                                <>
-                                  <button
-                                    disabled={busy}
-                                    onClick={() =>
-                                      void mutate(
-                                        "reactivate-client",
-                                        { issuer_id: issuer, id: row.id },
-                                        "Réactiver ce client dans le carnet de cet émetteur ?",
-                                      )
-                                    }
-                                  >
-                                    Réactiver
-                                  </button>
-                                  <button
-                                    disabled={busy}
-                                    onClick={() =>
-                                      void mutate(
-                                        "delete-client",
-                                        {
-                                          issuer_id: issuer,
-                                          id: row.id,
-                                          confirmation: "SUPPRIMER",
-                                        },
-                                        "Supprimer définitivement ce client archivé ? Toute dépendance à un chantier, document ou règlement empêchera sa suppression.",
-                                      )
-                                    }
-                                  >
-                                    Supprimer définitivement
-                                  </button>
-                                </>
-                              ) : null}
-                              <button
-                                onClick={() => {
-                                  setClientFilter(value(row, "id"));
-                                  setMessage(
-                                    "Retrouvez ses pièces dans Devis, Factures, Règlements et Documents en choisissant ce client.",
-                                  );
-                                }}
-                              >
-                                Situation client
-                              </button>
-                            </>
-                          )}
                           {(section === "devis" || section === "factures") && (
                             <>
                               {row.lifecycle !== "draft" && (
