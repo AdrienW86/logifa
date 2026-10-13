@@ -229,8 +229,13 @@ export function validatedAgentProposal(
     if (v === null) continue;
     if (typeof v !== "string" || v.length > 2000)
       throw new Error("AGENT_RESPONSE_INVALID");
-    if (v !== draft.client[key] && !prompt.includes(v))
-      throw new Error("AGENT_UNSUPPORTED_CLIENT_VALUE");
+    // A model may paraphrase a client already present in the draft or
+    // hallucinate an identity. Do not apply unsupported values, but keep
+    // independently valid work lines available for human review.
+    if (v !== draft.client[key] && !prompt.includes(v)) {
+      missing.push(`Client : champ ${key} ignoré (valeur non justifiée par la consigne).`);
+      continue;
+    }
     client[key] = v;
   }
   const lines: NonNullable<AgentProposal["lines"]> = [];
