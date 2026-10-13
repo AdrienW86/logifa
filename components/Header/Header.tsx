@@ -1,6 +1,5 @@
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import styles from "./header.module.css";
 import { auth } from "@clerk/nextjs/server";
 import { adminUserId, clerkIsConfigured } from "@/lib/auth/config";
@@ -16,7 +15,7 @@ export default async function Header() {
   return (
     <header className={styles.header} data-logifa-header>
       <Link className={styles.logo} href="/">
-        <Image src="/logo2.png" width={80} height={80} alt="logo" priority />
+        <img src="/icon.svg" width={80} height={80} alt="Logo Logifa" />
         <p className={styles.logifa}> Logifa </p>
       </Link>
       <nav className={styles.nav}>

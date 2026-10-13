@@ -25,7 +25,7 @@ export function isPwaPublicPath(pathname: string, method = "GET") {
     [
       "/manifest.webmanifest",
       "/sw.js",
-      "/pwa/offline.html",
+      "/pwa/offline",
       "/pwa/icon-192.png",
       "/pwa/icon-512.png",
       "/pwa/maskable-512.png",

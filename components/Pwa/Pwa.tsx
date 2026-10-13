@@ -51,6 +51,7 @@ export default function Pwa() {
     [restored, setRestored] = useState(false),
     [install, setInstall] = useState<InstallEvent | null>(null),
     [ios, setIos] = useState(false),
+    [mobile, setMobile] = useState(false),
     [waiting, setWaiting] = useState<ServiceWorker | null>(null);
   const reloadRequested = useRef(false);
   useEffect(() => {
@@ -77,6 +78,7 @@ export default function Pwa() {
     const standalone =
       matchMedia("(display-mode: standalone)").matches ||
       ("standalone" in navigator && navigator.standalone === true);
+    setMobile(!standalone && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
     setIos(
       !standalone &&
         (/iPhone|iPad|iPod/.test(navigator.userAgent) ||
@@ -162,6 +164,12 @@ export default function Pwa() {
         >
           Installer LOGIFA
         </button>
+      )}
+      {mobile && !ios && !install && (
+        <details>
+          <summary>Installer LOGIFA sur Android</summary>
+          <p>Dans Chrome, ouvrez le menu ⋮ puis « Installer l’application » ou « Ajouter à l’écran d’accueil ». L’invite automatique dépend du navigateur.</p>
+        </details>
       )}
       {ios && (
         <details>

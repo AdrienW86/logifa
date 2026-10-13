@@ -1,4 +1,5 @@
 import { SignIn } from '@clerk/nextjs';
+import PostSignInRefresh from '@/components/Auth/PostSignInRefresh';
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { adminUserId, clerkIsConfigured } from '@/lib/auth/config';
@@ -21,8 +22,8 @@ export default async function SignInPage() {
         <h1>Connexion privée</h1>
         <p>Accédez à votre espace de gestion des devis et factures.</p>
         {configured ? (
-          <SignIn routing="path" path="/sign-in" forceRedirectUrl="/" withSignUp={false}
-            appearance={{ elements: { rootBox: { width: '100%' }, cardBox: { width: '100%' } } }} />
+          <><PostSignInRefresh /><SignIn routing="path" path="/sign-in" forceRedirectUrl="/" withSignUp={false}
+            appearance={{ elements: { rootBox: { width: '100%' }, cardBox: { width: '100%' } } }} /></>
         ) : <p role="status">La connexion est temporairement indisponible.</p>}
       </section>
     </main>
