@@ -303,15 +303,22 @@ export default function Workspace({ section }: { section: Section }) {
     <main className={s.shell}>
       <p>LOGIFA · Espace privé</p>
       <h1>{titles[section]}</h1>
-      {["entreprises", "parametres"].includes(section) && (
+      {section === "parametres" && (
         <MailSettings key={issuer} issuer={issuer} />
       )}
       <nav className={s.nav} aria-label="Gestion">
-        {Object.entries(titles).map(([key, title]) => (
-          <Link key={key} href={key === "dashboard" ? "/" : `/gestion/${key}`}>
-            {title}
+        {(["dashboard", "clients", "devis", "factures", "entreprises", "parametres"] as const).map((key) => (
+          <Link key={key} href={key === "dashboard" ? "/" : `/gestion/${key}`} aria-current={section === key ? "page" : undefined}>
+            {titles[key]}
           </Link>
         ))}
+        <details className={s.more}>
+          <summary>Autres opérations</summary>
+          <div className={s.actions}>
+            <Link href="/gestion/paiements">Règlements et acomptes</Link>
+            <Link href="/gestion/documents">Archives et documents</Link>
+          </div>
+        </details>
       </nav>
       <div className={s.actions}>
         <label>
@@ -357,6 +364,30 @@ export default function Workspace({ section }: { section: Section }) {
           <div className={s.actions}>
             <Link href="/devis">Ouvrir un devis local</Link>
             <Link href="/facture">Ouvrir une facture locale</Link>
+          </div>
+        </div>
+      )}
+      {section === "parametres" && (
+        <div className={s.settingsGrid}>
+          <Link className={s.settingTile} href="/gestion/entreprises">
+            <strong>Entreprises et fiscalité</strong>
+            <span>Identités émettrices, TVA, coordonnées et logos</span>
+          </Link>
+          <Link className={s.settingTile} href="/devis">
+            <strong>Modèles de devis</strong>
+            <span>Ouvrir l’éditeur de devis et son modèle PDF</span>
+          </Link>
+          <Link className={s.settingTile} href="/facture">
+            <strong>Modèles de factures</strong>
+            <span>Ouvrir l’éditeur de factures et son modèle PDF</span>
+          </Link>
+          <div className={s.settingTile}>
+            <strong>Envoi de documents</strong>
+            <span>Comptes d’expédition et modèles de messages ci-dessous</span>
+          </div>
+          <div className={s.settingTile}>
+            <strong>Connexions et clés API</strong>
+            <span>Les clés privées sont configurées sur le serveur, jamais dans le navigateur</span>
           </div>
         </div>
       )}
@@ -543,6 +574,60 @@ export default function Workspace({ section }: { section: Section }) {
                 Choisissez une entreprise pour accéder à son carnet.
               </p>
             )}
+            {section === "clients" && (
+              <section className={s.clientArea} aria-label="Carnet de clients">
+                {chosenClient ? (
+                  <div className={s.clientDetail}>
+                    <button type="button" onClick={() => setClientFilter("")}>← Tous les clients</button>
+                    <div className={s.detailHeader}>
+                      <div>
+                        <p>Fiche client</p>
+                        <h2>{value(chosenClient, "company_name")}</h2>
+                        <p>{value(chosenClient, "contact_email")} · {value(chosenClient, "phone")}</p>
+                        <p>{value(chosenClient, "billing_address")}</p>
+                      </div>
+                      <div className={s.actions}>
+                        <button onClick={() => open("client", chosenClient)}>Modifier</button>
+                        <button onClick={() => open("project", { client_id: chosenClient.id })}>Ajouter un chantier</button>
+                        {!chosenClient.archived_at ? (
+                          <button disabled={busy} onClick={() => void mutate("archive-client", { issuer_id: issuer, id: chosenClient.id }, "Archiver ce client et conserver tous ses documents ?")}>Archiver</button>
+                        ) : (
+                          <>
+                            <button disabled={busy} onClick={() => void mutate("reactivate-client", { issuer_id: issuer, id: chosenClient.id }, "Réactiver ce client ?")}>Réactiver</button>
+                            {data.clientLifecycle && <button disabled={busy} onClick={() => void mutate("delete-client", { issuer_id: issuer, id: chosenClient.id, confirmation: "SUPPRIMER" }, "Supprimer définitivement ce client archivé ? Ses documents, chantiers ou règlements bloqueront la suppression.")}>Supprimer définitivement</button>}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className={s.grid}>
+                      <article className={s.card}><h3>Devis</h3><strong>{quotes.filter((r) => r.client_id === clientFilter).length}</strong><Link href={`/devis?issuer=${issuer}`}>Créer un devis</Link>
+                        <ul>{quotes.filter((r) => r.client_id === clientFilter).map((r) => <li key={value(r, "id")}><Link href={docLink(r, "quote")}>{value(r, "quote_number") || "Devis brouillon"}</Link> · {value(r, "lifecycle") || "Brouillon"}</li>)}</ul>
+                      </article>
+                      <article className={s.card}><h3>Factures</h3><strong>{invoices.filter((r) => r.client_id === clientFilter).length}</strong><Link href={`/facture?issuer=${issuer}`}>Créer une facture</Link>
+                        <ul>{invoices.filter((r) => r.client_id === clientFilter).map((r) => <li key={value(r, "id")}><Link href={docLink(r, "invoice")}>{value(r, "invoice_number") || "Facture brouillon"}</Link> · {value(r, "lifecycle") || "Brouillon"}</li>)}</ul>
+                      </article>
+                      <article className={s.card}><h3>Situation financière</h3><p>Facturé : {money(clientMetrics.billed)}</p><p>Encaissé : {money(clientMetrics.received)}</p><p>Reste dû : {money(clientMetrics.remaining)}</p></article>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={s.clientList}>
+                    <p>{visible.length} client(s) dans cet émetteur. Sélectionnez une fiche pour ses devis et factures.</p>
+                    {visible.map((row) => (
+                      <article className={s.clientRow} key={value(row, "id")}>
+                        <button type="button" className={s.clientOpen} onClick={() => {setClientFilter(value(row, "id"));setSearch("");}}>
+                          <strong>{value(row, "company_name")}</strong>
+                          <span>{value(row, "contact_email") || value(row, "phone") || "Coordonnées à compléter"}</span>
+                          <span>{row.archived_at ? "Archivé" : "Actif"} · {quotes.filter((q) => q.client_id === row.id).length} devis · {invoices.filter((i) => i.client_id === row.id).length} factures</span>
+                        </button>
+                        <button onClick={() => open("client", row)}>Modifier</button>
+                      </article>
+                    ))}
+                    {!visible.length && <p>Aucun client dans cette sélection.</p>}
+                  </div>
+                )}
+              </section>
+            )}
+            {section !== "clients" && (
             <div className={s.table}>
               <table>
                 <thead>
@@ -792,6 +877,7 @@ export default function Workspace({ section }: { section: Section }) {
               </table>
               {!visible.length && <p>Aucune fiche dans cette sélection.</p>}
             </div>
+            )}
           </>
         )}
       {data && section === "entreprises" && (
@@ -824,7 +910,7 @@ export default function Workspace({ section }: { section: Section }) {
           ))}
         </div>
       )}
-      {chosenClient && (
+      {chosenClient && section !== "clients" && (
         <section className={s.card}>
           <h2>Situation de {value(chosenClient, "company_name")}</h2>
           <p>
