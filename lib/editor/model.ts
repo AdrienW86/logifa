@@ -395,7 +395,54 @@ export function prepareProposal(
         );
       }
     }
-    next.lines = p.lineMode === "replace" ? lines : [...next.lines, ...lines];
+    if (p.lineMode === "replace") {
+      next.lines = lines;
+    } else if (current.lines.some((line) => line.type === "title")) {
+      // Proposals are grouped into the existing sections instead of appending
+      // a second set of nearly identical headings at the end of the document.
+      const sectionKey = (label: string) => {
+        const normalized = label.toLocaleLowerCase("fr").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
+        const groups = [
+          ["installation", "securisation", "echafaudage"],
+          ["depose", "demontage"],
+          ["preparation", "supports"],
+          ["couverture", "tuiles"],
+          ["faitage", "aretiers"],
+          ["zinguerie", "solins", "etancheite"],
+          ["evacuation", "nettoyage", "repli"],
+        ];
+        return groups.findIndex((words) => words.some((word) => normalized.includes(word)));
+      };
+      const arranged = [...next.lines];
+      let activeTitle: string | null = null;
+      for (const line of lines) {
+        if (line.type === "title") {
+          const exact = arranged.find((item) => item.type === "title" &&
+            item.name.trim().toLocaleLowerCase("fr") === line.name.trim().toLocaleLowerCase("fr"));
+          const family = sectionKey(line.name);
+          const matching = exact ?? (family < 0 ? undefined : arranged.find((item) =>
+            item.type === "title" && sectionKey(item.name) === family));
+          if (matching) {
+            activeTitle = matching.key;
+          } else {
+            arranged.push(line);
+            activeTitle = line.key;
+          }
+          continue;
+        }
+        const headingIndex = activeTitle === null ? -1 : arranged.findIndex((item) => item.key === activeTitle);
+        if (headingIndex < 0) {
+          arranged.push(line);
+          continue;
+        }
+        let insertAt = headingIndex + 1;
+        while (insertAt < arranged.length && arranged[insertAt].type !== "title") insertAt++;
+        arranged.splice(insertAt, 0, line);
+      }
+      next.lines = arranged;
+    } else {
+      next.lines = [...next.lines, ...lines];
+    }
   }
   return { next, changes, base: JSON.stringify(current) };
 }
