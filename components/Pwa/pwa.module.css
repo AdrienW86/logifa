@@ -1,0 +1,33 @@
+.status {
+  color: #173d32;
+  background: #f1f6f2;
+  padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  font: 14px system-ui;
+}
+.status:empty {
+  display: none;
+}
+.status > p,
+.status > details,
+.status > button {
+  margin: 8px 16px;
+}
+.status p {
+  line-height: 1.5;
+}
+.status button,
+.status summary {
+  min-height: 44px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+.status button {
+  border: 1px solid #c4d8cb;
+  border-radius: 12px;
+  color: #173d32;
+  background: white;
+}
+.check {
+  padding: 32px;
+  color: #173d32;
+}

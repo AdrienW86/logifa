@@ -1,0 +1,135 @@
+.shell {
+  margin: 24px 0;
+  background: #fff;
+  border: 1px solid #d7e0da;
+  border-radius: 16px;
+  padding: 24px;
+  color: #173d32;
+}
+.title {
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  align-items: center;
+}
+.layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 24px;
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.shell button {
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid #b2c5bb;
+  border-radius: 8px;
+  background: #f1f6f2;
+  cursor: pointer;
+  color: #173d32;
+  font: inherit;
+}
+.list button {
+  text-align: left;
+}
+.list span {
+  display: block;
+  font-size: 12px;
+  margin-top: 6px;
+}
+.shell button[aria-pressed="true"] {
+  border-color: #173d32;
+  background: #dbece1;
+}
+.form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 20px 0;
+}
+.form label {
+  display: grid;
+  gap: 8px;
+}
+.form input,
+.form textarea,
+.form select {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 10px;
+  border: 1px solid #b2c5bb;
+  border-radius: 8px;
+  font: inherit;
+}
+.wide {
+  grid-column: 1/-1;
+}
+.actions,
+.switch,
+.variables {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.variables code {
+  padding: 5px;
+  background: #f1f6f2;
+}
+.preview {
+  padding: 12px;
+  background: #f1f6f2;
+  border-radius: 12px;
+}
+.preview iframe {
+  height: 620px;
+  border: 0;
+  display: block;
+  margin: 12px auto;
+}
+.shell :focus-visible {
+  outline: 3px solid #257857;
+  outline-offset: 3px;
+}
+.shell button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.shell details {
+  overflow-wrap: anywhere;
+}
+.shell li {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 700px) {
+  .shell {
+    padding: 14px;
+  }
+  .title {
+    display: block;
+  }
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .form {
+    grid-template-columns: 1fr;
+  }
+  .wide {
+    grid-column: auto;
+  }
+  .form input,
+  .form textarea,
+  .form select {
+    font-size: 16px;
+  }
+  .preview iframe {
+    height: 540px;
+  }
+}

@@ -1,31 +1,54 @@
 {
-  "name": "clerk-nextjs",
+  "name": "logifa",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
+    "test:email-templates": "node --experimental-strip-types --test tests/email-templates/*.test.mjs",
+    "recipe:supabase:prepare": "node scripts/prepare-supabase-local.mjs",
+    "recipe:supabase:start": "node scripts/start-supabase-local.mjs",
+    "recipe:supabase:test": "node scripts/check-logifa-supabase-local.mjs",
+    "test:supabase:preparation": "node --test tests/local-supabase/*.test.mjs",
+    "test:pwa": "node --test tests/pwa/*.test.mjs",
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test:auth": "node --experimental-vm-modules --test tests/auth/access.test.mjs",
+    "test:auth:http": "node --test tests/auth/http-failclosed.test.mjs",
+    "test:baseline": "node tests/fixtures/verify.mjs",
+    "test:billing": "node --experimental-strip-types --experimental-vm-modules --test tests/billing/*.test.mjs",
+    "test:postgres": "node --test tests/postgres/recipe.test.mjs tests/postgres/workspace.test.mjs tests/postgres/document-services.test.mjs tests/postgres/client-lifecycle.test.mjs",
+    "test:editor": "node --experimental-strip-types --test tests/editor/model.test.mjs tests/editor/datasets.test.mjs tests/editor/agent.test.mjs tests/editor/agent-provider.test.mjs tests/editor/recipe-target.test.mjs tests/editor/email-key-preparation.test.mjs tests/editor/deposit.test.mjs tests/editor/managed-pdf.test.mjs tests/editor/mail.test.mjs",
+    "test:editor:browser": "node --experimental-strip-types --test tests/editor/browser.test.mjs",
+    "typecheck:editor": "tsc -p tsconfig.editor.json",
+    "typecheck:billing": "tsc -p tsconfig.lot3a.json",
+    "prepare:companies": "node --experimental-strip-types scripts/prepare-company-import.mjs",
+    "typecheck": "tsc --noEmit",
+    "test:workspace": "node --experimental-vm-modules --test tests/workspace/security.test.mjs",
+    "test:workspace:browser": "node --test tests/workspace/browser.test.mjs"
   },
   "dependencies": {
-    "@clerk/localizations": "^4.5.5",
-    "@clerk/nextjs": "^7.2.7",
-    "@hello-pangea/dnd": "^18.0.1",
-    "@react-pdf/renderer": "^4.5.1",
-    "@supabase/supabase-js": "^2.104.1",
-    "@tailwindcss/postcss": "^4.2.4",
-    "lucide-react": "^1.14.0",
-    "next": "16.2.4",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "zod": "^4.3.6"
+    "@clerk/nextjs": "7.9.14",
+    "@supabase/supabase-js": "2.117.3",
+    "html2canvas": "^1.4.1",
+    "jspdf": "4.2.1",
+    "jspdf-autotable": "^5.0.7",
+    "next": "16.4.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "server-only": "0.0.1"
   },
   "devDependencies": {
-    "@types/node": "25.6.0",
-    "@types/react": "19.2.14",
-    "autoprefixer": "^10.5.0",
-    "postcss": "^8.5.10",
-    "tailwindcss": "^4.2.4",
-    "typescript": "6.0.3"
+    "@electric-sql/pglite": "0.5.9",
+    "@playwright/test": "1.64.0",
+    "@types/node": "22.19.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "esbuild": "0.28.2",
+    "prettier": "3.9.10",
+    "supabase": "2.120.0",
+    "typescript": "5.9.3"
   }
 }

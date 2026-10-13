@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.lot3a.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": ["node", "react", "react-dom"]
+  },
+  "include": [
+    "lib/editor/**/*.ts",
+    "components/Editor/**/*.tsx",
+    "components/Editor/**/*.d.ts"
+  ]
+}

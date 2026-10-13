@@ -1,31 +1,56 @@
-# Dépendances
-node_modules/
-.pnp
-.pnp.js
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Build et Sortie
-.next/
-out/
-build/
-dist/
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# Environnement (TRÈS IMPORTANT)
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env*.local
+# testing
+/coverage
 
-# Supabase (si tu utilises le CLI)
-supabase/.temp/
+# next.js
+/.next/
+/out/
 
-# Debug
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Système
-.DS_Store
-Thumbs.db
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Local secrets and temporary artifacts
+*.key
+*.p12
+*.pfx
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+/tmp/
+/temp/
+/secrets/

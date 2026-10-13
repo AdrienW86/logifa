@@ -1,0 +1,139 @@
+.shell {
+  max-width: 1200px;
+  margin: 40px auto;
+  padding: 24px;
+  color: #173d32;
+  font-family: Arial, sans-serif;
+}
+.shell h1 {
+  font-size: 32px;
+  margin: 16px 0;
+}
+.shell h2 {
+  margin: 16px 0;
+}
+.shell p {
+  line-height: 1.6;
+}
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0 24px;
+}
+.nav a,
+.shell button,
+.shell select,
+.shell input,
+.shell textarea {
+  padding: 11px;
+  border: 1px solid #b2c5bb;
+  border-radius: 8px;
+  background: #fff;
+  color: #173d32;
+  font: inherit;
+}
+.nav a {
+  background: #eef4f0;
+  text-decoration: none;
+}
+.shell button {
+  cursor: pointer;
+  background: #e1eee5;
+}
+.shell button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.notice {
+  padding: 18px;
+  background: #fff4dc;
+  border: 1px solid #ccb784;
+  border-radius: 12px;
+  margin: 16px 0;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+.card {
+  padding: 18px;
+  background: #f1f6f2;
+  border: 1px solid #ccddd2;
+  border-radius: 12px;
+}
+.card input,.card select,.card textarea { max-width:100%;padding:9px;border:1px solid #b2c5bb;border-radius:8px;font:inherit;background:#fff;color:#173d32; }
+.card strong {
+  display: block;
+  font-size: 26px;
+  margin: 12px 0;
+}
+.table {
+  overflow: auto;
+  margin: 20px 0;
+}
+.table table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 650px;
+}
+.table th,
+.table td {
+  text-align: left;
+  padding: 14px;
+  border-bottom: 1px solid #d7e0da;
+  vertical-align: top;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 24px;
+  background: #f1f6f2;
+  border-radius: 12px;
+  margin: 24px 0;
+}
+.form label {
+  display: grid;
+  gap: 8px;
+}
+.form textarea {
+  min-height: 80px;
+}
+.wide {
+  grid-column: 1/-1;
+}
+.form button {
+  align-self: end;
+}
+.shell :focus-visible {
+  outline: 3px solid #257857;
+  outline-offset: 3px;
+}
+@media (max-width: 700px) {
+  .shell {
+    padding: 14px;
+    margin: 16px auto;
+  }
+  .shell h1 {
+    font-size: 26px;
+  }
+  .form {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+  .wide {
+    grid-column: auto;
+  }
+  .shell input,
+  .shell select,
+  .shell textarea {
+    font-size: 16px;
+  }
+}

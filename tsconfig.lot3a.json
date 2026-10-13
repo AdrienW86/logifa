@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "target": "ES2022", "module": "ESNext", "moduleResolution": "Bundler",
+    "strict": true, "noEmit": true, "allowImportingTsExtensions": true,
+    "allowJs": true, "checkJs": false, "esModuleInterop": true,
+    "skipLibCheck": true, "types": ["node"], "lib": ["ES2022", "DOM"],
+    "paths": { "@/*": ["./*"] }
+  },
+  "include": ["types/billing.ts", "lib/billing/**/*.ts", "lib/supabase/**/*.ts", "lib/services/**/*.ts"]
+}

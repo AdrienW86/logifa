@@ -1,0 +1,231 @@
+.invoiceContainer {
+  width: 210mm; 
+  min-height: 297mm;
+  padding: 20mm;
+  margin: 10mm auto;
+  border: 1px solid #ccc;
+  box-shadow: 0 0 5px rgba(0,0,0,0.1);
+  color: black;
+  background-color: white;
+  font-family: Arial, sans-serif;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.h1 {
+  padding: 10px;
+  text-align: center;
+}
+
+.h2 {
+  font-size: 2rem;
+  border: 2px solid black;
+  width: 91%;
+  position: relative;
+  left: -33%;
+  text-align: right;
+  border-radius: 50px;
+  padding: 20px;
+}
+
+.h1, .h2 {
+  margin-bottom: 10px;
+}
+
+.h3 {
+  margin-bottom: 10px;
+}
+
+.btnContainer {
+  display: flex;
+  background-color: #ccc;
+  justify-content: center;
+}
+
+.boxContainer {
+  display: flex;
+  justify-content: center;
+}
+
+.button {
+  width: 150px;
+  margin: 10px;
+}
+
+.box {
+  display: flex;
+  justify-content: center;
+}
+
+.acompte {
+  display: flex;
+  flex-direction: column;
+  height: 50px;
+  width: 200px;
+  margin: auto; 
+}
+
+.inputAccount {
+  padding: 3px;
+  text-align: center;
+}
+
+.checkbox {
+  position: relative;
+  right: 10px;
+}
+
+.label {
+  position: relative;
+  left: 40px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  table-layout: fixed; /* important pour que width soit respecté */
+}
+
+.table td {
+  border: 1px solid #333;
+  padding: 6px;
+}
+
+.table th {
+  color: white;
+  border: 1px solid #333;
+  padding: 6px;
+}
+
+.totalRow {
+  text-align: right;
+}
+
+.button {
+  margin-top: 1rem;
+  padding: 8px 12px;
+  background-color: #0070f3;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.button:hover {
+  background-color: #005bb5;
+}
+
+.inputGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.inputGroup input {
+  padding: 6px;
+  flex: 1;
+  min-width: 120px;
+}
+
+.infos {
+  display: flex;
+  margin-top: 20px;
+}
+
+.entreprise, .client {
+  width: 50%;
+  line-height: 1.5rem;
+}
+
+.client {
+  text-align: right;
+}
+
+.designation {
+  width: 40%; 
+  word-wrap: break-word;
+  word-break: break-word;
+  text-align: center
+}
+
+.quantite {
+  width: 15%;
+  text-align: center
+}
+
+.pu {
+  width: 15%;
+  text-align: center
+}
+
+.tva {
+  width: 10%;
+  text-align: center
+}
+
+.montant {
+  width: 20%;
+  text-align: center
+}
+
+.logo {
+  display: block;
+  margin-bottom: 10px;
+  position: absolute;
+  top : 40px;
+  right: 70px;
+}
+
+.total {
+  margin-top: 10px;
+  display: flex;
+}
+
+.totalTitle {
+  margin-left: 45%;
+  width: 40%;
+  text-align: left;
+  line-height: 1.5rem;
+}
+
+.totalAmount {
+  width: 20%;
+  line-height: 1.5rem;
+  text-align: right;
+}
+
+.finalTotal {
+  color: white;
+  font-weight: bold;
+  padding: 10px;
+  text-align: right;
+  margin-top: 10px;
+  position: relative;
+  left: 0px;
+  width: 250px;
+  height: 45px;
+  font-size: 1.2rem; 
+}
+
+.pay  {
+  width: 70%;
+  position: relative;
+  bottom: 60px;
+}
+
+.box {
+  margin-left: 9%;
+  text-align: right;
+}
+
+.div {
+  display: flex;
+  width: 100%;
+  justify-content: end;
+}
+
+.designation2 {
+  text-align: center
+}

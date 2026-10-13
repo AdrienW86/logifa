@@ -1,0 +1,45 @@
+html {
+  scroll-padding-top: 16px;
+}
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+html[data-logifa-locked="true"] #logifa-private-root {
+  visibility: hidden;
+}
+@media (max-width: 700px) {
+  [data-logifa-header] {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px;
+  }
+  [data-logifa-header] > a {
+    width: auto;
+    align-items: center;
+  }
+  [data-logifa-header] > nav {
+    width: 100%;
+    padding: 0;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  [data-logifa-header] > nav a,
+  [data-logifa-header] > nav button {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 16px;
+    margin: 0;
+    padding: 8px;
+  }
+  [data-logifa-header] > a p {
+    font-size: 24px;
+    padding: 12px;
+  }
+  [data-logifa-header] > a img {
+    width: 48px;
+    height: 48px;
+  }
+}

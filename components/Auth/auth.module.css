@@ -1,0 +1,32 @@
+.shell {
+  min-height: 80vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+  background: #f3f6f4;
+  color: #17251e;
+}
+
+.card {
+  width: min(100%, 460px);
+  padding: clamp(20px, 5vw, 36px);
+  border: 1px solid #dce5df;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 12px 36px #17251e0d;
+}
+
+.card h1 { margin-bottom: 12px; font-size: 1.75rem; }
+.card p { line-height: 1.6; margin-bottom: 24px; }
+.label { color: #085212; font-weight: bold; letter-spacing: .12em; }
+.signOut {
+  cursor: pointer;
+  padding: 10px 14px;
+  border: 1px solid #085212;
+  border-radius: 6px;
+  background: white;
+  color: #085212;
+  align-self: center;
+}
+.signOut:hover { background: #edf5ee; }
+.signOut:focus-visible { outline: 3px solid #5271ff; outline-offset: 3px; }

@@ -1,0 +1,153 @@
+{
+  "postgresVersion": 170011,
+  "migrations": [
+    {
+      "migration": "20261012150837_logifa_lot3a_model.sql",
+      "tables": 21,
+      "indexes": 81,
+      "functions": 0,
+      "acl": "PASS",
+      "rls": "PASS"
+    },
+    {
+      "migration": "20261012150838_logifa_lot3a_operations.sql",
+      "tables": 21,
+      "indexes": 81,
+      "functions": 30,
+      "acl": "PASS",
+      "rls": "PASS"
+    },
+    {
+      "migration": "20261012150839_logifa_lot3a_security.sql",
+      "tables": 21,
+      "indexes": 81,
+      "functions": 48,
+      "acl": "PASS",
+      "rls": "PASS"
+    }
+  ],
+  "races": [
+    {
+      "race": "numbering-0",
+      "pidA": 2812,
+      "pidB": 27920,
+      "blockingProven": true,
+      "b": "fulfilled",
+      "errorCode": null
+    },
+    {
+      "race": "numbering-1",
+      "pidA": 8364,
+      "pidB": 26960,
+      "blockingProven": true,
+      "b": "fulfilled",
+      "errorCode": null
+    },
+    {
+      "race": "numbering-2",
+      "pidA": 12268,
+      "pidB": 15328,
+      "blockingProven": true,
+      "b": "fulfilled",
+      "errorCode": null
+    },
+    {
+      "race": "numbering-3",
+      "pidA": 21956,
+      "pidB": 30808,
+      "blockingProven": true,
+      "b": "fulfilled",
+      "errorCode": null
+    },
+    {
+      "race": "same-receipt",
+      "pidA": 36672,
+      "pidB": 30848,
+      "blockingProven": true,
+      "b": "rejected",
+      "errorCode": "LOGIFA_ALLOCATION_EXCEEDS_AVAILABLE"
+    },
+    {
+      "race": "partial-allocations",
+      "pidA": 36112,
+      "pidB": 38012,
+      "blockingProven": true,
+      "b": "fulfilled",
+      "errorCode": null
+    },
+    {
+      "race": "same-quote-final",
+      "pidA": 39112,
+      "pidB": 30852,
+      "blockingProven": true,
+      "b": "rejected",
+      "errorCode": "LOGIFA_FINAL_ALREADY_ISSUED"
+    },
+    {
+      "race": "same-deduction-idempotent",
+      "pidA": 18488,
+      "pidB": 25624,
+      "blockingProven": true,
+      "b": "fulfilled",
+      "errorCode": null
+    },
+    {
+      "race": "same-deposit-two-finals",
+      "pidA": 17300,
+      "pidB": 6696,
+      "blockingProven": true,
+      "b": "rejected",
+      "errorCode": "POSTGRES_REJECTED"
+    },
+    {
+      "race": "credit-source-cap",
+      "pidA": 34176,
+      "pidB": 31772,
+      "blockingProven": true,
+      "b": "rejected",
+      "errorCode": "LOGIFA_CREDIT_EXCEEDS_SOURCE"
+    },
+    {
+      "race": "credit-application-cap",
+      "pidA": 17904,
+      "pidB": 2456,
+      "blockingProven": true,
+      "b": "rejected",
+      "errorCode": "LOGIFA_CREDIT_EXCEEDS_AVAILABLE"
+    },
+    {
+      "race": "two-refunds",
+      "pidA": 12692,
+      "pidB": 28292,
+      "blockingProven": true,
+      "b": "fulfilled",
+      "errorCode": null
+    },
+    {
+      "race": "credit-and-refund",
+      "pidA": 15668,
+      "pidB": 39876,
+      "blockingProven": true,
+      "b": "fulfilled",
+      "errorCode": null
+    },
+    {
+      "race": "paid-variant-idempotent",
+      "pidA": 31204,
+      "pidB": 38008,
+      "blockingProven": true,
+      "b": "fulfilled",
+      "errorCode": null
+    },
+    {
+      "race": "refund-before-paid-variant",
+      "pidA": 32392,
+      "pidB": 31784,
+      "blockingProven": true,
+      "b": "rejected",
+      "errorCode": "LOGIFA_NOT_FULLY_PAID"
+    }
+  ],
+  "jwtSignatureValidation": "NOT_TESTED",
+  "storageHttp": "NOT_TESTED"
+}
