@@ -27,6 +27,8 @@ export const metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "LOGIFA", statusBarStyle: "default" },
   icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: [{ url: "/icon.svg", type: "image/svg+xml" }],
     apple: "/pwa/apple-touch-icon.png",
     other: [
       {
