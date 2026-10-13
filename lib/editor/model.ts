@@ -401,7 +401,7 @@ export function prepareProposal(
       // Proposals are grouped into the existing sections instead of appending
       // a second set of nearly identical headings at the end of the document.
       const sectionKey = (label: string) => {
-        const normalized = label.toLocaleLowerCase("fr").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
+        const normalized = label.toLocaleLowerCase("fr").normalize("NFD").replace(new RegExp("[\\u0300-\\u036f]", "g"), "");
         const groups = [
           ["installation", "securisation", "echafaudage"],
           ["depose", "demontage"],
