@@ -413,7 +413,7 @@ export function validatedAgentProposal(
     }
     // Re-running an assistant proposal must not append an identical work item.
     // Compare all editable business fields; never merge distinct quantities or prices.
-    const sameLine = (line: { type: string; name: string; unit: string; quantity: string; price: string; tva: string }) =>
+    const sameLine = (line: { type: string; name: string; unit?: string; quantity?: string; price?: string; tva?: string }) =>
       line.type === "normal" &&
       line.name.trim().toLocaleLowerCase("fr") === name.trim().toLocaleLowerCase("fr") &&
       line.unit === unit &&
