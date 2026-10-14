@@ -303,7 +303,7 @@ export function validatedAgentProposal(
       [...quote.matchAll(/\d+(?:[.,]\d+)?/g)].some(
         (match) => Number(match[0].replace(",", ".")) === Number(value),
       );
-    const known = catalog.find(
+    const known = draft.issuerScope ? undefined : catalog.find(
       (row) =>
         row.name === name &&
         row.unit === item.unit &&

@@ -19,6 +19,8 @@ export function proposalContext(draft: EditorDraft, issuer: { name: string }) {
         tva,
       }),
     ),
-    catalogue: catalog,
+    // Shared legacy catalogue is for offline/local editing only. An issuer
+    // with server identity must not inherit unrelated companies' tariffs.
+    catalogue: draft.issuerScope ? [] : catalog,
   };
 }
