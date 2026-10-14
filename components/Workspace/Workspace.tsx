@@ -62,6 +62,7 @@ export default function Workspace({ section }: { section: Section }) {
     [identityPreview, setIdentityPreview] = useState<Row>({}),
     [key, setKey] = useState(""),
     [clientFilter, setClientFilter] = useState("");
+  const [clientQuickSearch, setClientQuickSearch] = useState("");
   const activeIssuer = useRef("");
   const [knownIssuers, setKnownIssuers] = useState<Row[]>([]);
   const [settingsTab, setSettingsTab] = useState<"documents" | "mail" | "technical">("documents");
@@ -217,6 +218,21 @@ export default function Workspace({ section }: { section: Section }) {
         delete payload[key];
     }
     if (form === "client") {
+      const rate = String(fd.get("preferred_vat_rate") ?? "");
+      delete payload.preferred_vat_rate;
+      if (!["", "0", "5.5", "10", "20"].includes(rate)) {
+        setError("Taux de TVA habituel invalide.");
+        return;
+      }
+      const prior = editing.editor_fields;
+      const existingFields = isRecord(prior) ? prior : {};
+      const editorFields: Row = {
+        name: "", street: "", cityZip: "", phone: "", email: "", workAddress: "",
+        ...existingFields,
+      };
+      if (rate) editorFields.preferred_vat_rate = rate;
+      else delete editorFields.preferred_vat_rate;
+      payload.editor_fields = editorFields;
       try {
         payload.addresses = JSON.parse(String(fd.get("addresses") || "[]"));
       } catch {
@@ -480,8 +496,30 @@ export default function Workspace({ section }: { section: Section }) {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
-              {section !== "clients" &&
-                selectClientFilter(clients, clientFilter, setClientFilter)}
+              {section !== "clients" && clients.length > 0 && (
+                <div className={s.clientChooser}>
+                  <label htmlFor="client-quick-search">Rechercher un client</label>
+                  <input
+                    id="client-quick-search"
+                    value={clientQuickSearch}
+                    onChange={(event) => setClientQuickSearch(event.target.value)}
+                    placeholder="Nom, entreprise, téléphone ou e-mail"
+                    autoComplete="off"
+                  />
+                  <div className={s.clientChoices}>
+                    <button type="button" aria-pressed={!clientFilter} onClick={() => setClientFilter("")}>Tous les clients</button>
+                    {clients
+                      .filter((row) => [value(row, "company_name"), value(row, "contact_email"), value(row, "phone")].join(" ").toLocaleLowerCase("fr").includes(clientQuickSearch.toLocaleLowerCase("fr")))
+                      .slice(0, 12)
+                      .map((row) => (
+                        <button type="button" key={value(row, "id")} aria-pressed={clientFilter === row.id} onClick={() => setClientFilter(value(row, "id"))}>
+                          {value(row, "company_name")}
+                        </button>
+                      ))}
+                  </div>
+                  {clients.length > 12 && !clientQuickSearch && <small>Saisissez quelques lettres pour affiner la liste.</small>}
+                </div>
+              )}
               {section === "clients" && (
                 <button disabled={!issuer} onClick={() => open("client")}>
                   Nouveau client
@@ -1016,6 +1054,17 @@ export default function Workspace({ section }: { section: Section }) {
               ])}
               {field("default_vat_rate", "Taux TVA par défaut")}
               {field("vat_number", "Numéro TVA")}
+              <label>
+                Taux de TVA habituel du client (facultatif)
+                <select name="preferred_vat_rate" defaultValue={typeof editing.editor_fields === "object" && editing.editor_fields !== null && !Array.isArray(editing.editor_fields) ? String((editing.editor_fields as Row).preferred_vat_rate ?? "") : ""}>
+                  <option value="">À déterminer sur le devis</option>
+                  <option value="0">0 %</option>
+                  <option value="5.5">5,5 %</option>
+                  <option value="10">10 %</option>
+                  <option value="20">20 %</option>
+                </select>
+                <small>Préférence indicative uniquement : la TVA applicable est vérifiée pour chaque prestation et chaque document.</small>
+              </label>
               {field("iban", "IBAN")}
               {field("bic", "BIC")}
               {field("bank_name", "Banque")}
@@ -1226,29 +1275,6 @@ export default function Workspace({ section }: { section: Section }) {
         </form>
       )}
     </main>
-  );
-}
-function selectClientFilter(
-  clients: Row[],
-  chosen: string,
-  onChange: (value: string) => void,
-) {
-  return (
-    <label>
-      Client
-      <select
-        aria-label="Filtrer par client"
-        value={chosen}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        <option value="">Tous les clients de cet émetteur</option>
-        {clients.map((row) => (
-          <option key={value(row, "id")} value={value(row, "id")}>
-            {value(row, "company_name")}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
 function ImportDocument({

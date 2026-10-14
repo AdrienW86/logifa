@@ -203,3 +203,11 @@
 .formHeading h2 {margin:0!important;}
 .formHeading p {font-size:13px;color:#617b6e;margin-bottom:4px;}
 @media(max-width:700px){.settingsTabs{display:grid;grid-template-columns:1fr}.formHeading{flex-wrap:wrap}}
+
+.clientChooser {display:grid;gap:8px;min-width:min(360px,100%);flex:1;max-width:560px;}
+.clientChooser label {font-weight:600;font-size:13px;color:#375b48;}
+.clientChooser input {width:100%;}
+.clientChoices {display:flex;gap:6px;flex-wrap:wrap;max-height:135px;overflow:auto;padding:2px;}
+.clientChoices button {padding:7px 11px;font-size:13px;background:#fff;border:1px solid #dae7dd;border-radius:99px;}
+.clientChoices button[aria-pressed="true"] {background:#164f38;color:white;border-color:#164f38;}
+.clientChooser small,.form small {color:#62766a;font-size:12px;line-height:1.45;}
