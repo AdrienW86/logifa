@@ -723,6 +723,11 @@ export default function Workspace({ section }: { section: Section }) {
                               </button>
                             </>
                           )}
+                          {section === "devis" && row.lifecycle === "historical" && (
+                            <Link href={`/facture?issuer=${encodeURIComponent(issuer)}&fromQuote=${encodeURIComponent(value(row, "id"))}`}>
+                              Créer une facture
+                            </Link>
+                          )}
                           {section === "devis" && (
                             <>
                               <button
