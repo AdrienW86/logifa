@@ -86,11 +86,30 @@ export async function POST(request: Request) {
       const table = kind === "quote" ? "quotes" : "invoices";
       const numberColumn = kind === "quote" ? "quote_number" : "invoice_number";
       const number = string("number").trim();
-      const duplicates = await db.from(table).select("*")
+      // The unique key lives at legal-entity level (not at issuer-profile
+      // level). Search only likely matching numbers instead of scanning the
+      // first 500 documents; historical imports may contain leading spaces.
+      const issuerRow = await db.from("issuer_profiles")
+        .select("legal_entity_id").eq("id", issuer).single();
+      if (issuerRow.error || !issuerRow.data?.legal_entity_id)
+        throw new Error("Entité juridique de l'émetteur introuvable.");
+      if (!number || number.length > 200)
+        throw new Error("Numéro historique invalide.");
+      const escaped = number.replace(/[\\%_]/g, "\\      const duplicates = await db.from(table).select("*")
         .eq("issuer_profile_id", issuer).limit(500);
       if (duplicates.error) throw new Error("Recherche du document historique impossible.");
       const matches = (duplicates.data ?? []).filter((item) =>
+        typeof item[numberColumn] === "string" && item[numberColumn].trim() === number);");
+      const duplicates = await db.from(table).select("*")
+        .eq("legal_entity_id", issuerRow.data.legal_entity_id)
+        .ilike(numberColumn, "%" + escaped)
+        .limit(500);
+      if (duplicates.error)
+        throw new Error("Recherche du document historique impossible.");
+      const matches = (duplicates.data ?? []).filter((item) =>
         typeof item[numberColumn] === "string" && item[numberColumn].trim() === number);
+      if (matches.some((item) => item.issuer_profile_id !== issuer))
+        throw new Error("Ce numéro est déjà utilisé par un autre profil de la même entité juridique.");
       if (matches.length > 1) throw new Error("Plusieurs documents historiques portent ce numéro. Vérification manuelle nécessaire.");
       if (matches.length === 1) {
         const row = matches[0];
