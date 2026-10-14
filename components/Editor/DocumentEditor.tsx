@@ -198,8 +198,6 @@ export default function DocumentEditor({
     issuer: company?.databaseId ?? company?.name ?? "",
     pdfAccent,
   });
-  const pdfAccent = /^#[0-9a-fA-F]{6}$/.test(company?.color ?? "") ? company.color : "#295746";
-  const previewSignature = JSON.stringify({ draft, issuer: company?.databaseId ?? company?.name ?? "", pdfAccent });
   const amounts = totals(draft.lines),
     remaining = amounts.totalTTC - (Number(draft.acompte) || 0);
   const ttcConfirmed =
