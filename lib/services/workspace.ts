@@ -11,23 +11,18 @@ export async function workspaceRead(issuer?: string) {
   await checkedRpc(db, "logifa_workspace", { p_action: "health", p_data: {} });
   const lists: Record<string, Record<string, unknown>[]> = {};
   const truncated: string[] = [];
-  for (const table of [
-    "issuer_profiles",
-    "legal_entities",
-    "clients",
-    "projects",
-    "quotes",
-    "invoices",
-    "payments",
-  ]) {
+  await Promise.all([
+    "issuer_profiles", "legal_entities", "clients", "projects",
+    "quotes", "invoices", "payments",
+  ].map(async (table) => {
+    if (!["issuer_profiles", "legal_entities"].includes(table) && !issuer) {
+      lists[table] = [];
+      return;
+    }
     let query = db.from(table).select("*", { count: "exact" });
     if (!["issuer_profiles", "legal_entities"].includes(table)) {
-      if (!issuer) {
-        lists[table] = [];
-        continue;
-      }
-      uuid(issuer);
-      query = query.eq("issuer_profile_id", issuer);
+      uuid(issuer!);
+      query = query.eq("issuer_profile_id", issuer!);
     }
     const { data, error, count } = await query.limit(500);
     if (error) throw persistenceError(error);
@@ -36,7 +31,7 @@ export async function workspaceRead(issuer?: string) {
       throw new Error("PERSISTENCE_RESPONSE_INVALID");
     lists[table] = raw;
     if (count && count > 500) truncated.push(table);
-  }
+  }));
   const invoiceIds = lists.invoices.map((row) => String(row.id)),
     quoteIds = lists.quotes.map((row) => String(row.id));
   const files: Record<string, unknown>[] = [];
@@ -101,13 +96,9 @@ export async function workspaceRead(issuer?: string) {
     lists.document_events = events;
   } else lists.document_events = [];
   const balances: Record<string, Record<string, unknown>> = {};
-  for (const row of lists.invoices)
-    if (row.lifecycle !== "draft")
-      balances[String(row.id)] = await checkedRpc(
-        db,
-        "logifa_invoice_balance",
-        { p_invoice: row.id },
-      );
+  await Promise.all(lists.invoices.filter((row) => row.lifecycle !== "draft").map(async (row) => {
+    balances[String(row.id)] = await checkedRpc(db, "logifa_invoice_balance", { p_invoice: row.id });
+  }));
   const context = await checkedRpc(db, "logifa_context");
   const capability = await db.rpc("logifa_client_lifecycle", {
     p_action: "health",
