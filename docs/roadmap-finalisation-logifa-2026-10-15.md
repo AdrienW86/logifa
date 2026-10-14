@@ -178,3 +178,17 @@ Pour supprimer le mot « BROUILLON » **après** sauvegarde, ne jamais distribue
 - Le catalogue initial est vide ; aucune valeur n'a été présumée ni récupérée d'une autre entreprise. Tests réels d'extraction → approbation → devis professionnel encore à effectuer. IA V2 (planification, métrés, contrôle sémantique) reste non achevée.
 
 **Acceptation historique** : un ancien statut « signé » déclaré ne constitue pas à lui seul une preuve suffisante d'acceptation. Avant une facture de solde liée à un devis historique, vérifier le PDF signé ou un document d'acceptation explicite et relier cette preuve. Ne pas changer automatiquement le statut d'un devis historique sur la base d'une déclaration non vérifiée.
+
+### Bilan de la première livraison, contrôles réels
+
+Dernier commit fonctionnel : `5ebea43b3372917be1be02be3d519a54d47cf219`.
+GitHub Actions (typecheck et tests de facturation) **SUCCESS** et Vercel **READY** sur ce SHA.
+
+- `61ad20bd7dca546aa77e4cd25d615c4fecd92126` : correction du PDF classique pour respecter montants de TVA/TTC et n'afficher la mention de franchise (art. 293 B) que si le régime fiscal déclaré est `exempt` ; sécurité des aperçus marqués non émis.
+- `7c4a111149c176cf520127fc169e331bbc9c6d85` puis `1d7088a9e3b66e6a6a5b53e3aab337cdde0ca54e` : recherche ciblée des doublons d'archives historiques, par numéro et par entité juridique au lieu de scanner les 500 premiers documents. Le premier commit a échoué à la compilation ; le second a réparé le problème et passé CI/Vercel.
+- `5ebea43b3372917be1be02be3d519a54d47cf219` : les factures d'acompte sur devis historique PDF peuvent utiliser les lignes extraites après validation et comparaison au total TTC du devis, sans inventer de taxes ni de prix.
+- Vraie émission, vraie livraison de mail, vrai acquittement, transfert Resend **non déclenchés** ; l'utilisateur doit valider les données comptables et fiscales. Le système de numérotation reste volontairement bloqué pour Couverture Catalane.
+- Le traitement fiscal des **remises négatives** de la facture de référence de 9 904,04 € reste à implémenter via un modèle explicitement dédié aux remises, avec ventilation correcte par taux et base de TVA. Ne pas forcer des prix négatifs dans le validateur financier actuel.
+- La validation de l'acceptation d'un devis historique, les tests bout-en-bout des paiements, les modèles d'avoirs, le vrai cycle d'email et la conformité aux plateformes agréées restent au programme.
+
+Aucune tâche nocturne récurrente n'a pu être créée dans ce fil, le compte ayant atteint sa limite de cinq automatisations actives. Les travaux effectués ici ont eu lieu pendant l'exécution de cette conversation ; ne pas présenter cette limitation comme un travail continu programmé.
