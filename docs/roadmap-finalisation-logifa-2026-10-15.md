@@ -132,3 +132,38 @@ Logifa est réservé à un seul administrateur. Chaque entreprise est un **émet
 ## Décision importante
 Pour supprimer le mot « BROUILLON » **après** sauvegarde, ne jamais distribuer à l'avance des numéros à des documents librement éditables : automatiser la préparation, puis faire de « Enregistrer » une action explicite et définitive qui prend un numéro fiscal atomiquement, affiche le PDF et permet l'envoi. Une facture non émise reste un simple travail préparatoire, non une facture fiscale.
 
+
+
+## Journal d'avancement — première session de la mission nocturne
+
+**Livré sur `master` :**
+- Module `lib/billing/deposit-schedule.ts` (centimes et demi-up) pour premier acompte 30 %, second 30 %, solde 40 % réellement restant, montant et taux libres ; tests `tests/billing/deposit-schedule.test.mjs` basés sur le PDF du 30/09/2026 (9 904,04 € → 2 971,21 € + 2 971,21 € + 3 961,62 €).
+- UI de création d'acompte libre **sans devis**, exigeant une description réelle, un montant HT et un taux de TVA choisi explicitement ; aide à la ventilation depuis un devis et rappels des acomptes déjà émis.
+- Nouveau parcours facture « Enregistrer et numéroter » distinct de « conserver ma saisie sans numéro » : sauvegarde serveur → émission contrôlée/numérotation → verrouillage → tentative d'archivage du PDF, avec message de reprise si la dernière étape échoue. Aucun envoi automatique.
+- PDF serveur des acomptes liés à un devis : montant initial TTC, acompte(s) déjà facturé(s), montant de la pièce, reste **à facturer** (ne pas confondre avec dette exigible), avec contrôle de dépassement.
+- Contrôle serveur des acomptes : interdiction de dépasser le montant du devis ; autorisation d'un acompte sans devis, mais la facture finale reste obligatoirement liée à un chantier ou devis ; refus d'émettre une finale tant que les acomptes de ce dossier ne sont pas associés pour déduction ; bouton de rattachement multiple idempotent.
+- Verrou explicite de numérotation en base pour Couverture Catalane : impossible d'émettre une facture de cette société avec l'ancien compteur non vérifié. Réconciliation des pièces manquante.
+- Fonction Supabase et route administrateur de **copie**, et non déplacement, du compte Resend source inactif avec rechiffrement AES-GCM sur la destination, plus duplication des modèles ; action déclenchée uniquement sur validation humaine dans Paramètres e-mail. Configuration source conservée jusqu'à essai d'envoi.
+- CI GitHub Actions TypeScript + tests de facturation sur `master`.
+
+**Migrations Supabase appliquées sur le projet `bniitcbsaowwzkjdrqwz` :**
+- `hold_unreconciled_invoices_and_allow_manual_deposits_20261015` : blocage de numérotation litigieuse, acomptes libres et limite au montant du devis ;
+- `require_all_issued_deposits_linked_before_final_invoice` : vérification de toutes les déductions avant finale ;
+- `secure_copied_mail_setup_between_same_issuer_profiles` : RPC protégée pour copie mail entre profils identiques en SIRET/nom et statut actif/inactif.
+
+**Limitations et travaux indispensables :**
+- Aucun numéro réel n'a été attribué, aucune facture envoyée, aucun paiement ni accord client créé ou supposé.
+- La numérotation doit être justifiée par l'historique réel et le statut fiscal `reviewed` de l'émetteur doit être confirmé par l'administrateur avant de déverrouiller l'émission.
+- Les remises négatives de la facture externe, la TVA multi-taux, les acomptes historiques sans lignes et la représentation des avoirs nécessitent des recettes financières approfondies avant émission.
+- Le transfert Resend est développé, **mais pas exécuté ni testé en envoi réel**.
+- La sauvegarde/émission/archivage se compose encore de plusieurs requêtes : vérifier systématiquement la reprise si l'archivage échoue après l'émission.
+- La numérotation et les documents originaux restent immuables ; aucun test réel de facture émise en production.
+- Aucun connecteur facturation électronique PA, aucune IA V2 autonome complète, aucun catalogue tarifaire historique validé livré à ce stade.
+- CI/vérification Vercel : consulter leurs états **sur le dernier SHA**, ne pas déduire la réussite des commits précédents.
+
+**Références juridiques consultées en octobre 2026** :
+- Mentions obligatoires sur les factures et date des acomptes : https://entreprendre.service-public.gouv.fr/vosdroits/F31808
+- Exigibilité de la TVA et acomptes : https://entreprendre.service-public.gouv.fr/vosdroits/F31412
+- Franchise en base (mention art. 293 B) : https://bofip.impots.gouv.fr/bofip/1079-PGP.html/identifiant=BOI-TVA-DECLA-40-10-20-20260701
+- Facturation électronique et échéances : https://entreprendre.service-public.gouv.fr/actualites/A15683
+
