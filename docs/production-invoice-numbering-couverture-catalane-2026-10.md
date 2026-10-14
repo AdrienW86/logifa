@@ -1,3 +1,5 @@
+> **ALERTE DU 15/10/2026 — NUMÉROTATION NON VALIDÉE.** Le dernier exemple de facture externe transmis après cette configuration porte un suffixe de série bien supérieur à `0021`. Le compteur `next_value=22` mentionné ci-dessous est donc **en attente de réconciliation**, et NE DOIT PAS être utilisé pour une émission réelle sans revue préalable de toutes les factures de cet émetteur. Cette configuration historique n'a attribué aucun numéro de facture, et elle n'a pas été modifiée à ce stade. Voir [la feuille de route de finalisation](roadmap-finalisation-logifa-2026-10-15.md).
+
 # Numérotation des factures — Couverture Catalane (reprise 2026)
 
 État validé en production le 15/10/2026 : configuration **sans émission**.
