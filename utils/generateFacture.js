@@ -118,7 +118,7 @@ export const generateFacture = ({
       p.name,
       `${p.quantity} ${p.unit}`,
       `${p.price.toFixed(2)} €`,
-      `${0}%`,
+      `${p.tva}%`,
       `${(p.price * p.quantity).toFixed(2)} €`
     ];
   });
@@ -162,11 +162,11 @@ export const generateFacture = ({
   pdf.setFontSize(10);
   pdf.setFont("helvetica", "bold");
   pdf.text(`Total HT : ${totalHT.toFixed(2)} €`, totalX + 70 - 2, finalY + 6, { align: "right" });
-  pdf.text(`TVA : 0.00 €`, totalX + 70 - 2, finalY + 13, { align: "right" });
+  pdf.text(`TVA : ${totalTVA.toFixed(2)} €`, totalX + 70 - 2, finalY + 13, { align: "right" });
 
   //pdf.setFontSize(12);
   pdf.setTextColor(...accentRgb);
-  pdf.text(`TOTAL TTC : ${totalHT.toFixed(2)} €`, totalX + 70 - 2, finalY + 20, { align: "right" });
+  pdf.text(`TOTAL TTC : ${totalTTC.toFixed(2)} €`, totalX + 70 - 2, finalY + 20, { align: "right" });
 
   pdf.setTextColor(0,0,0);
 
@@ -256,12 +256,14 @@ export const generateFacture = ({
   // Bon pour accord
   const bonY = finalY + boxHeight + 5;
   pdf.setFont("helvetica", "bold");
-  pdf.text(`Facture émise le : ${formattedDate}`, condX, bonY + 5);
+  pdf.text(invoiceNumber === "BROUILLON" ? "Document en préparation — non émis" : `Facture émise le : ${formattedDate}`, condX, bonY + 5);
   pdf.text("Règlement sous 30 jours après réception", condX, bonY + 10);
   }
 
   pdf.setFontSize(6);
-  pdf.text("TVA non applicable, art. 293 B du Code Général des Impôts (CGI)", condTextX +50 , condY + 150);
+  if (selectedCompany.vatRegime === "exempt") {
+    pdf.text("TVA non applicable, art. 293 B du Code Général des Impôts (CGI)", condTextX + 50, condY + 150);
+  }
 
   // =========================
   // Sauvegarde

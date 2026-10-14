@@ -180,7 +180,9 @@ export const generatePdf = ({ client, prestations, selectedCompany, invoiceNumbe
   pdf.text("Signature du client :", condX, bonY + 32);
 
 pdf.setFontSize(6);
-  pdf.text("TVA non applicable, art. 293 B du Code Général des Impôts (CGI)", condX +60, bonY + 225);
+  if (selectedCompany.vatRegime === "exempt") {
+    pdf.text("TVA non applicable, art. 293 B du Code Général des Impôts (CGI)", condX + 60, bonY + 225);
+  }
   // =========================
   // Sauvegarde
   // =========================

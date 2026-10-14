@@ -19,6 +19,7 @@ export interface Company {
   siret: string;
   logo: string;
   color: string;
+  vatRegime?: string;
 }
 export interface CatalogueService {
   name: string;

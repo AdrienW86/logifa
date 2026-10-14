@@ -103,6 +103,7 @@ export default function ServerDocument({
           (row) => row.id === issuerId,
         );
         if (!profile) throw new Error("Émetteur introuvable.");
+        const legal = workspace.lists.legal_entities.find((row)=>row.id===profile.legal_entity_id);
         const mapped: Company = {
           databaseId: issuerId,
           id: 0,
@@ -114,6 +115,7 @@ export default function ServerDocument({
           siret: value(profile, "source_siret"),
           logo: value(profile, "logo_path"),
           color: value(profile, "color") || "#173d32",
+          vatRegime: legal ? value(legal, "vat_regime") : "",
         };
         setCompany(mapped);
         onCompany(mapped);
