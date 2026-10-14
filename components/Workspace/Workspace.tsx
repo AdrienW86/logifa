@@ -68,13 +68,14 @@ export default function Workspace({ section }: { section: Section }) {
     [clientFilter, setClientFilter] = useState("");
   const [clientQuickSearch, setClientQuickSearch] = useState("");
   const activeIssuer = useRef("");
+  const formRef = useRef<HTMLFormElement | null>(null);
   const [knownIssuers, setKnownIssuers] = useState<Row[]>([]);
   const [settingsTab, setSettingsTab] = useState<"documents" | "mail" | "technical">("documents");
   const loadSequence = useRef(0);
   const load = useCallback(async (id: string) => {
     if (activeIssuer.current !== id) return;
     const sequence = ++loadSequence.current;
-    setData(null);
+    // Keep the current workspace mounted while refreshing data.
     try {
       const next = parseWorkspace(
         await api(`/api/workspace?issuer=${encodeURIComponent(id)}`),
@@ -89,15 +90,17 @@ export default function Workspace({ section }: { section: Section }) {
         setError(textError(e));
     }
   }, []);
+  const userId = user?.id;
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     const sync = () => {
-      const id = selectedIssuer(user.id);
+      const id = selectedIssuer(userId);
+      const changed = activeIssuer.current !== id;
       activeIssuer.current = id;
       setIssuer(id);
       setSearch("");
       setClientFilter("");
-      setForm(null);
+      if (changed) setForm(null);
       void load(id);
     };
     sync();
@@ -106,7 +109,7 @@ export default function Workspace({ section }: { section: Section }) {
       loadSequence.current++;
       window.removeEventListener("logifa:issuer", sync);
     };
-  }, [user, load]);
+  }, [userId, load]);
   const mutate = async (action: string, payload: Row, question: string) => {
     if (busy || !window.confirm(question)) return;
     setBusy(true);
@@ -126,11 +129,15 @@ export default function Workspace({ section }: { section: Section }) {
     }
   };
   const open = (type: string, row: Row = {}) => {
+    setError("");
     setForm(type);
     setEditing(row);
     setIdentityPreview(row);
     setKey(crypto.randomUUID());
   };
+  useEffect(() => {
+    if (form) formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [form]);
   const clients = data?.lists.clients ?? [],
     invoices = data?.lists.invoices ?? [],
     quotes = data?.lists.quotes ?? [],
@@ -890,6 +897,7 @@ export default function Workspace({ section }: { section: Section }) {
       )}
       {form && (
         <form
+          ref={formRef}
           className={s.form}
           onSubmit={submit}
           onInput={(event) => {
