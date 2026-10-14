@@ -675,6 +675,16 @@ export default function Workspace({ section }: { section: Section }) {
                                   }
                                 />
                               )}
+                              {section === "factures" && row.lifecycle === "issued" &&
+                                data.balances[value(row, "id")]?.is_acquittable === true && (
+                                <a
+                                  href={`/api/invoices/${value(row, "id")}/pdf?issuer=${encodeURIComponent(issuer)}&paid=1`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  Télécharger la facture acquittée
+                                </a>
+                              )}
                               <Link
                                 href={docLink(
                                   row,
