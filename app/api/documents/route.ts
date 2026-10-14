@@ -9,6 +9,7 @@ import { scopedRecord } from "@/lib/services/workspace";
 import { billingService } from "@/lib/services/billing";
 import { uuid, isoDate } from "@/lib/billing/validation";
 import { randomUUID } from "node:crypto";
+import { databaseForAdmin } from "@/lib/supabase/server";
 export async function POST(request: Request) {
   try {
     await requireAdmin();
@@ -80,20 +81,46 @@ export async function POST(request: Request) {
       );
       if (document.client_id !== client)
         throw new Error("LOGIFA_CLIENT_ISSUER_MISMATCH");
-    } else
-      document = await billingService.importHistorical(kind, {
-        issuer_profile_id: issuer,
-        client_id: client,
-        number: string("number"),
-        issue_date: string("date"),
-        original_status: string("status"),
-        import_key: data.has("import_key")
-          ? uuid(string("import_key"))
-          : randomUUID(),
-        total_net: totalNet,
-        total_vat: totalVat,
-        total_gross: totalGross,
-      });
+    } else {
+      const db = await databaseForAdmin();
+      const table = kind === "quote" ? "quotes" : "invoices";
+      const numberColumn = kind === "quote" ? "quote_number" : "invoice_number";
+      const number = string("number").trim();
+      const duplicate = await db.from(table).select("*")
+        .eq("issuer_profile_id", issuer).eq(numberColumn, number).maybeSingle();
+      if (duplicate.error) throw new Error("Recherche du document historique impossible.");
+      if (duplicate.data) {
+        const row = duplicate.data;
+        const money = (v: unknown) => Number(v).toFixed(2);
+        if (row.origin !== "historical" || row.client_id !== client ||
+          String(row.issue_date).slice(0, 10) !== string("date") ||
+          money(row.total_net) !== money(totalNet) ||
+          money(row.total_vat) !== money(totalVat) ||
+          money(row.total_gross) !== money(totalGross)) {
+          throw new Error("Ce numéro existe déjà pour cette entreprise avec des informations différentes. Vérifiez le devis importé.");
+        }
+        const archived = await db.from("document_files").select("id")
+          .eq(kind === "quote" ? "quote_id" : "invoice_id", row.id)
+          .eq("role", "original").maybeSingle();
+        if (archived.error) throw new Error("Vérification du PDF original impossible.");
+        if (archived.data) throw new Error("Ce document et son PDF original sont déjà importés.");
+        document = row;
+      } else {
+        document = await billingService.importHistorical(kind, {
+          issuer_profile_id: issuer,
+          client_id: client,
+          number,
+          issue_date: string("date"),
+          original_status: string("status"),
+          import_key: data.has("import_key")
+            ? uuid(string("import_key"))
+            : randomUUID(),
+          total_net: totalNet,
+          total_vat: totalVat,
+          total_gross: totalGross,
+        });
+      }
+    }
     if (typeof document.id !== "string")
       throw new Error("PERSISTENCE_RESPONSE_INVALID");
     // Stable object path for retries of the same historical import.
