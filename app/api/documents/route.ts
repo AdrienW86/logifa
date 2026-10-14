@@ -47,6 +47,18 @@ export async function POST(request: Request) {
       data.has("existing_id") && string("existing_id")
         ? uuid(string("existing_id"))
         : null;
+    // Accept French formatting on input, then keep canonical decimal strings
+    // for the existing exact-decimal billing validation.
+    const amount = (key: string): string => {
+      const raw = string(key).trim().replace(/[\\u00a0\\u202f\\s]/g, "");
+      const normalized = raw.replace(",", ".");
+      if (!/^[0-9]+(?:\\.[0-9]{1,2})?$/.test(normalized))
+        throw new Error("HISTORY_AMOUNT_FORMAT");
+      return normalized;
+    };
+    const totalNet = amount("total_net");
+    const totalVat = amount("total_vat");
+    const totalGross = amount("total_gross");
     let document: Record<string, unknown>;
     if (existing) {
       document = await scopedRecord(
@@ -66,9 +78,9 @@ export async function POST(request: Request) {
         import_key: data.has("import_key")
           ? uuid(string("import_key"))
           : randomUUID(),
-        total_net: string("total_net"),
-        total_vat: string("total_vat"),
-        total_gross: string("total_gross"),
+        total_net: totalNet,
+        total_vat: totalVat,
+        total_gross: totalGross,
       });
     if (typeof document.id !== "string")
       throw new Error("PERSISTENCE_RESPONSE_INVALID");
