@@ -1305,9 +1305,18 @@ function ImportDocument({
             )
               return;
             const fd = new FormData(e.currentTarget);
+            for (const field of ["total_net", "total_vat", "total_gross"]) {
+              const raw = String(fd.get(field) ?? "").trim().replace(/[\u00a0\u202f\s]/g, "").replace(",", ".");
+              if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) {
+                setError("Montant invalide : utilisez par exemple 1 250,50 ou 1250.50.");
+                return;
+              }
+              fd.set(field, raw);
+            }
             fd.set("issuer_id", issuer);
             fd.set("confirmed", "true");
             fd.set("import_key", importKey);
+            setError("");
             setBusy(true);
             try {
               await api("/api/documents", { method: "POST", body: fd });
@@ -1356,15 +1365,15 @@ function ImportDocument({
           </label>
           <label>
             HT historique (€)
-            <input name="total_net" required={!existing} />
+            <input name="total_net" inputMode="decimal" placeholder="Ex. 1 250,50" required={!existing} />
           </label>
           <label>
             TVA historique (€)
-            <input name="total_vat" required={!existing} />
+            <input name="total_vat" inputMode="decimal" placeholder="Ex. 1 250,50" required={!existing} />
           </label>
           <label>
             TTC historique (€)
-            <input name="total_gross" required={!existing} />
+            <input name="total_gross" inputMode="decimal" placeholder="Ex. 1 250,50" required={!existing} />
           </label>
           <label>
             Fichier original
