@@ -95,11 +95,9 @@ export async function POST(request: Request) {
         throw new Error("Entité juridique de l'émetteur introuvable.");
       if (!number || number.length > 200)
         throw new Error("Numéro historique invalide.");
-      const escaped = number.replace(/[\\%_]/g, "\\      const duplicates = await db.from(table).select("*")
-        .eq("issuer_profile_id", issuer).limit(500);
-      if (duplicates.error) throw new Error("Recherche du document historique impossible.");
-      const matches = (duplicates.data ?? []).filter((item) =>
-        typeof item[numberColumn] === "string" && item[numberColumn].trim() === number);");
+      const escaped = [...number].map((character) =>
+        ["%", "_", "\\"].includes(character) ? "\\" + character : character
+      ).join("");
       const duplicates = await db.from(table).select("*")
         .eq("legal_entity_id", issuerRow.data.legal_entity_id)
         .ilike(numberColumn, "%" + escaped)
