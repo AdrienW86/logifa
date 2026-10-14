@@ -106,6 +106,17 @@ export default function ServerDocument({
         setClients(workspace.lists.clients.filter((row) => !row.archived_at));
         setProjects(workspace.lists.projects);
         setDocs([...workspace.lists.quotes, ...workspace.lists.invoices]);
+        if (documentKind === "invoice" && query.get("fromQuote")) {
+          const quoted = workspace.lists.quotes.find((row) =>
+            row.id === query.get("fromQuote") && row.issuer_profile_id === issuerId);
+          if (!quoted) throw new Error("Devis source introuvable pour cette entreprise.");
+          setSource(value(quoted, "id"));
+          setClient(value(quoted, "client_id"));
+          setKind("final");
+          setMessage("Facture brouillon liée au devis " + value(quoted, "quote_number") +
+            ". Reportez les prestations depuis le PDF original et vérifiez les montants avant d’enregistrer. Aucune facture n’est émise automatiquement.");
+        }
+
         setAvailable(true);
         setMessage(
           "Connexion serveur disponible. Un brouillon n’a aucun numéro définitif.",
