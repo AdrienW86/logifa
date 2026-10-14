@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, value, type Row } from "@/lib/workspace/client";
+import { api, value, parseWorkspace, type Row } from "@/lib/workspace/client";
 import s from "./workspace.module.css";
 import EmailTemplates, { HtmlPreview, kindLabels } from "./EmailTemplates";
 import { parseTemplate, type EmailTemplate } from "@/lib/email/templates";
@@ -20,6 +20,7 @@ const message = (error: unknown) =>
   error instanceof Error ? error.message : "Opération indisponible.";
 export function MailSettings({ issuer }: { issuer: string }) {
   const [state, setState] = useState<Row>({}),
+    [legacyIssuer, setLegacyIssuer] = useState(""),
     [status, setStatus] = useState(""),
     [busy, setBusy] = useState(false);
   const reload = async () => {
@@ -31,8 +32,24 @@ export function MailSettings({ issuer }: { issuer: string }) {
   };
   useEffect(() => {
     setState({});
+    setLegacyIssuer("");
     setStatus("");
-    if (issuer) void reload();
+    if (issuer) {
+      void reload();
+      void api(`/api/workspace?issuer=${issuer}`).then((raw) => {
+        const data = parseWorkspace(raw);
+        const target = data.lists.issuer_profiles.find((row) => row.id === issuer);
+        if (!target) return;
+        const normalize = (v: string) => v.replace(/\D/g,"");
+        const old = data.lists.issuer_profiles.find((row) =>
+          row.id !== issuer && row.active === false &&
+          value(row,"commercial_name").trim().toLowerCase() ===
+            value(target,"commercial_name").trim().toLowerCase() &&
+          normalize(value(row,"source_siret")) !== "" &&
+          normalize(value(row,"source_siret")) === normalize(value(target,"source_siret")));
+        if (old) setLegacyIssuer(value(old,"id"));
+      }).catch(() => { /* Mail settings still work without enterprise discovery. */ });
+    }
   }, [issuer]);
   if (!issuer)
     return (
@@ -61,6 +78,27 @@ export function MailSettings({ issuer }: { issuer: string }) {
           : "désactivé"}
       </p>
       {status && <p role="status">{status}</p>}
+      {legacyIssuer && state.configured !== true && (
+        <div className={s.card}>
+          <h3>Récupérer l'ancienne configuration e-mail</h3>
+          <p>Une ancienne fiche inactive de cette entreprise possède probablement son compte Resend et ses modèles. Copier la configuration permet de conserver l'expéditeur sans recopier la clé API. L'ancienne configuration reste disponible jusqu'aux tests d'envoi.</p>
+          <button type="button" disabled={busy} onClick={async () => {
+            if (!confirm("Copier l'ancienne configuration Resend vers cette entreprise active ? La clé sera déchiffrée et rechiffrée sur le serveur, jamais envoyée au navigateur. Aucun message ne sera envoyé.")) return;
+            setBusy(true);
+            try {
+              const result = await api("/api/mail/copy-issuer",{
+                method:"POST",headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({confirmed:true,confirmation:"COPIER LA CONFIGURATION",
+                  source_issuer:legacyIssuer,destination_issuer:issuer}),
+              });
+              setStatus(value(result,"message") || "Configuration copiée. Vérifiez le domaine et réalisez un essai d'envoi.");
+              await reload();
+            } catch(error) {
+              setStatus("Copie non effectuée : "+message(error));
+            } finally {setBusy(false);}
+          }}>Copier le compte et les modèles de l'ancien profil</button>
+        </div>
+      )}
       <form
         key={`${issuer}:${state.key_version ?? 0}`}
         className={s.form}
