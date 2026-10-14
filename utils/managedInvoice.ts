@@ -1,3 +1,4 @@
+import { pdfAccentRgb } from "./pdf-accent";
 import type { PdfPayload } from "../types/editor";
 import type { RowInput, Table } from "jspdf-autotable";
 declare module "jspdf" {
@@ -48,6 +49,7 @@ export const generateManagedInvoice = (
   reference?: { creationDate: string; fileId: string },
 ) => {
   const pdf = new jsPDF("p", "mm", "a4");
+  const accentRgb = pdfAccentRgb(selectedCompany.color);
   if (reference) {
     pdf.setCreationDate(reference.creationDate);
     pdf.setFileId(reference.fileId);
@@ -65,7 +67,7 @@ export const generateManagedInvoice = (
 
     pdf.setFontSize(16);
     pdf.setFont("helvetica", "bold");
-    pdf.setTextColor(selectedCompany.color);
+    pdf.setTextColor(...accentRgb);
     pdf.text(selectedCompany.name, margin + 45, 18);
 
     pdf.setFontSize(9);
@@ -82,7 +84,7 @@ export const generateManagedInvoice = (
     pdf.text(`SIRET : ${selectedCompany.siret}`, margin + 45, 54);
 
     pdf.setFontSize(18);
-    pdf.setTextColor(selectedCompany.color);
+    pdf.setTextColor(...accentRgb);
     pdf.text(documentTitle, pageWidth - margin, 20, { align: "right" });
 
     pdf.setFontSize(10);
@@ -120,7 +122,7 @@ export const generateManagedInvoice = (
 
   pdf.setFontSize(11);
   pdf.setFont("helvetica", "bold");
-  pdf.setTextColor(selectedCompany.color);
+  pdf.setTextColor(...accentRgb);
   pdf.text("CLIENT", margin + 5, startY + padding);
 
   pdf.setTextColor(0);
@@ -145,7 +147,7 @@ export const generateManagedInvoice = (
           colSpan: 5,
           styles: {
             fillColor: [245, 245, 245],
-            textColor: selectedCompany.color,
+            textColor: accentRgb,
             fontStyle: "bold",
           },
         },
@@ -174,7 +176,7 @@ export const generateManagedInvoice = (
       4: { cellWidth: usableWidth * 0.2, halign: "center" },
     },
     headStyles: {
-      fillColor: selectedCompany.color,
+      fillColor: accentRgb,
       textColor: 255,
       halign: "center",
     },
@@ -199,7 +201,7 @@ export const generateManagedInvoice = (
 
   // Bloc total
   const totalX = pageWidth - margin - 70;
-  pdf.setDrawColor(selectedCompany.color);
+  pdf.setDrawColor(...accentRgb);
   pdf.rect(totalX, finalY, 70, boxHeight);
 
   pdf.setFontSize(10);
@@ -212,7 +214,7 @@ export const generateManagedInvoice = (
   });
 
   //pdf.setFontSize(12);
-  pdf.setTextColor(selectedCompany.color);
+  pdf.setTextColor(...accentRgb);
   pdf.text(
     `TOTAL TTC : ${totalTTC.toFixed(2)} €`,
     totalX + 70 - 2,
@@ -224,7 +226,7 @@ export const generateManagedInvoice = (
 
   //pdf.text(`ACOMPTE 30% : 2971,21 €`, totalX + 70 - 2, finalY + 27, { align: "right" });
 
-  pdf.setTextColor(selectedCompany.color);
+  pdf.setTextColor(...accentRgb);
   //pdf.text(`Net à payer: 2971,21 €`, totalX + 70 - 2, finalY + 34, { align: "right" });
 
   //pdf.setTextColor(0,0,0);
@@ -236,7 +238,7 @@ export const generateManagedInvoice = (
 
   // Bloc conditions
   const condX = margin;
-  pdf.setDrawColor(selectedCompany.color);
+  pdf.setDrawColor(...accentRgb);
   pdf.rect(condX, finalY, 90, boxHeight);
 
   pdf.setFontSize(10);

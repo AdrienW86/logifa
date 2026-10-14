@@ -1,8 +1,10 @@
+import { pdfAccentRgb } from "./pdf-accent";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export const generatePdf = ({ client, prestations, selectedCompany, invoiceNumber, formattedDate, totalHT, totalTVA, totalTTC }) => {
   const pdf = new jsPDF("p", "mm", "a4");
+  const accentRgb = pdfAccentRgb(selectedCompany.color);
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 15;
@@ -15,7 +17,7 @@ export const generatePdf = ({ client, prestations, selectedCompany, invoiceNumbe
 
     pdf.setFontSize(16);
     pdf.setFont("helvetica", "bold");
-    pdf.setTextColor(selectedCompany.color);
+    pdf.setTextColor(...accentRgb);
     pdf.text(selectedCompany.name, margin + 45, 18);
 
     pdf.setFontSize(9);
@@ -34,7 +36,7 @@ export const generatePdf = ({ client, prestations, selectedCompany, invoiceNumbe
     pdf.text(`SIRET : ${selectedCompany.siret}`, margin + 45, 54);
 
     pdf.setFontSize(18);
-    pdf.setTextColor(selectedCompany.color);
+    pdf.setTextColor(...accentRgb);
     pdf.text("DEVIS", pageWidth - margin, 20, { align: "right" });
 
     pdf.setFontSize(10);
@@ -68,7 +70,7 @@ export const generatePdf = ({ client, prestations, selectedCompany, invoiceNumbe
 
   pdf.setFontSize(11);
   pdf.setFont("helvetica", "bold");
-  pdf.setTextColor(selectedCompany.color);
+  pdf.setTextColor(...accentRgb);
   pdf.text("CLIENT", margin + 5, startY + padding);
 
   pdf.setTextColor(0);
@@ -90,7 +92,7 @@ export const generatePdf = ({ client, prestations, selectedCompany, invoiceNumbe
       return [{
         content: p.name,
         colSpan: 5,
-        styles: { fillColor: [245, 245, 245], textColor: selectedCompany.color, fontStyle: "bold" }
+        styles: { fillColor: [245, 245, 245], textColor: accentRgb, fontStyle: "bold" }
       }];
     }
     return [
@@ -115,7 +117,7 @@ export const generatePdf = ({ client, prestations, selectedCompany, invoiceNumbe
       3: { cellWidth: usableWidth * 0.1, halign: "center" },
       4: { cellWidth: usableWidth * 0.2, halign: "center" }
     },
-    headStyles: { fillColor: selectedCompany.color, textColor: 255, halign: "center" },
+    headStyles: { fillColor: accentRgb, textColor: 255, halign: "center" },
     styles: { fontSize: 9, cellPadding: 3 },
     // didDrawPage: (data) => {
     //   if (data.pageNumber > 1) drawHeader(); // répéter logo/titre sur chaque page
@@ -134,7 +136,7 @@ export const generatePdf = ({ client, prestations, selectedCompany, invoiceNumbe
   }
 
   const totalX = pageWidth - margin - 70; // largeur bloc total 70
-  pdf.setDrawColor(selectedCompany.color);
+  pdf.setDrawColor(...accentRgb);
   pdf.rect(totalX, finalY, 70, boxHeight);
 
   pdf.setFontSize(10);
@@ -142,14 +144,14 @@ export const generatePdf = ({ client, prestations, selectedCompany, invoiceNumbe
   pdf.text(`Total HT : ${totalHT.toFixed(2)} €`, totalX + 70 - 2, finalY + 8, { align: "right" });
   pdf.text(`TVA : ${totalTVA.toFixed(2)} €`, totalX + 70 - 2, finalY + 15, { align: "right" });
   pdf.setFontSize(12);
-  pdf.setTextColor(selectedCompany.color);
+  pdf.setTextColor(...accentRgb);
   //pdf.text("Remise exceptionnelle : -500€", totalX + 70 - 2, finalY + 24, { align: "right" });
 
   pdf.text(`TOTAL TTC : ${totalTTC.toFixed(2)} €`, totalX + 70 - 2, finalY + 24, { align: "right" });
 
   // Bloc conditions
   const condX = margin;
-  pdf.setDrawColor(selectedCompany.color);
+  pdf.setDrawColor(...accentRgb);
   pdf.rect(condX, finalY, 90, boxHeight);
 
   pdf.setFontSize(10);

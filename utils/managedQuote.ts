@@ -1,3 +1,4 @@
+import { pdfAccentRgb } from "./pdf-accent";
 import type { PdfPayload } from "../types/editor";
 import type { RowInput } from "jspdf-autotable";
 import type { ManagedPayload } from "./managedInvoice";
@@ -21,6 +22,7 @@ export const generateManagedQuote = (
   reference?: { creationDate: string; fileId: string },
 ) => {
   const pdf = new jsPDF("p", "mm", "a4");
+  const accentRgb = pdfAccentRgb(selectedCompany.color);
   if (reference) {
     pdf.setCreationDate(reference.creationDate);
     pdf.setFileId(reference.fileId);
@@ -36,7 +38,7 @@ export const generateManagedQuote = (
 
     pdf.setFontSize(16);
     pdf.setFont("helvetica", "bold");
-    pdf.setTextColor(selectedCompany.color);
+    pdf.setTextColor(...accentRgb);
     pdf.text(selectedCompany.name, margin + 45, 18);
 
     pdf.setFontSize(9);
@@ -53,7 +55,7 @@ export const generateManagedQuote = (
     pdf.text(`SIRET : ${selectedCompany.siret}`, margin + 45, 54);
 
     pdf.setFontSize(18);
-    pdf.setTextColor(selectedCompany.color);
+    pdf.setTextColor(...accentRgb);
     pdf.text("DEVIS", pageWidth - margin, 20, { align: "right" });
 
     pdf.setFontSize(10);
@@ -91,7 +93,7 @@ export const generateManagedQuote = (
 
   pdf.setFontSize(11);
   pdf.setFont("helvetica", "bold");
-  pdf.setTextColor(selectedCompany.color);
+  pdf.setTextColor(...accentRgb);
   pdf.text("CLIENT", margin + 5, startY + padding);
 
   pdf.setTextColor(0);
@@ -116,7 +118,7 @@ export const generateManagedQuote = (
           colSpan: 5,
           styles: {
             fillColor: [245, 245, 245],
-            textColor: selectedCompany.color,
+            textColor: accentRgb,
             fontStyle: "bold",
           },
         },
@@ -145,7 +147,7 @@ export const generateManagedQuote = (
       4: { cellWidth: usableWidth * 0.2, halign: "center" },
     },
     headStyles: {
-      fillColor: selectedCompany.color,
+      fillColor: accentRgb,
       textColor: 255,
       halign: "center",
     },
@@ -169,7 +171,7 @@ export const generateManagedQuote = (
   }
 
   const totalX = pageWidth - margin - 70; // largeur bloc total 70
-  pdf.setDrawColor(selectedCompany.color);
+  pdf.setDrawColor(...accentRgb);
   pdf.rect(totalX, finalY, 70, boxHeight);
 
   pdf.setFontSize(10);
@@ -181,7 +183,7 @@ export const generateManagedQuote = (
     align: "right",
   });
   pdf.setFontSize(12);
-  pdf.setTextColor(selectedCompany.color);
+  pdf.setTextColor(...accentRgb);
   //pdf.text("Remise exceptionnelle : -500€", totalX + 70 - 2, finalY + 24, { align: "right" });
 
   pdf.text(
@@ -193,7 +195,7 @@ export const generateManagedQuote = (
 
   // Bloc conditions
   const condX = margin;
-  pdf.setDrawColor(selectedCompany.color);
+  pdf.setDrawColor(...accentRgb);
   pdf.rect(condX, finalY, 90, boxHeight);
 
   pdf.setFontSize(10);
