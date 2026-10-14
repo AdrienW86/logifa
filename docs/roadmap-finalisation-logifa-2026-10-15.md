@@ -167,3 +167,14 @@ Pour supprimer le mot « BROUILLON » **après** sauvegarde, ne jamais distribue
 - Franchise en base (mention art. 293 B) : https://bofip.impots.gouv.fr/bofip/1079-PGP.html/identifiant=BOI-TVA-DECLA-40-10-20-20260701
 - Facturation électronique et échéances : https://entreprendre.service-public.gouv.fr/actualites/A15683
 
+
+
+### Complément — catalogue tarifaire et agent IA
+
+- Table privée et RPC `logifa_private.issuer_tariffs` / `public.logifa_issuer_tariffs` en base de production, réservées à l'administrateur et contrôlant l'émetteur.
+- Un devis PDF **historique archivé** peut proposer ses lignes prouvées et ses prix dans un catalogue **en attente** ; pas d'approbation automatique, pas d'utilisation de prix à 0 € comme tarif de référence.
+- Dans **Réglages → Tarifs de l'entreprise**, chaque suggestion peut être approuvée ou archivée par l'administrateur. L'approbation d'un tarif historique comme prix actuel est une décision manuelle explicite.
+- L'agent OpenAI reçoit seulement les tarifs **approuvés de l'émetteur actuellement sélectionné**. L'ancien catalogue statique global est désormais exclu du contexte et de la preuve de prix pour toute entreprise rattachée à Supabase.
+- Le catalogue initial est vide ; aucune valeur n'a été présumée ni récupérée d'une autre entreprise. Tests réels d'extraction → approbation → devis professionnel encore à effectuer. IA V2 (planification, métrés, contrôle sémantique) reste non achevée.
+
+**Acceptation historique** : un ancien statut « signé » déclaré ne constitue pas à lui seul une preuve suffisante d'acceptation. Avant une facture de solde liée à un devis historique, vérifier le PDF signé ou un document d'acceptation explicite et relier cette preuve. Ne pas changer automatiquement le statut d'un devis historique sur la base d'une déclaration non vérifiée.
