@@ -26,13 +26,16 @@ export async function POST(request: Request) {
     if (quote.lifecycle !== "historical" && quote.lifecycle !== "issued")
       throw new Error("LOGIFA_QUOTE_REQUIRED");
     const db = await databaseForAdmin();
-    const attachment = await db.from("document_files").select("id,byte_size")
-      .eq("quote_id", quote.id).eq("role", "original").maybeSingle();
-    if (attachment.error || !attachment.data)
-      throw new Error("PDF_ORIGINAL_REQUIRED");
-    if (Number(attachment.data.byte_size) > 12 * 1024 * 1024)
+    const attachments = await db.from("document_files").select("id,role,byte_size")
+      .eq("quote_id", quote.id).in("role", ["original", "signed"]).limit(25);
+    if (attachments.error) throw new Error("PDF_ARCHIVE_CHECK_FAILED");
+    // A signed PDF can be used as the source when the original has not been linked.
+    const attachment = attachments.data?.find((row) => row.role === "original")
+      ?? attachments.data?.find((row) => row.role === "signed");
+    if (!attachment) throw new Error("PDF_ORIGINAL_REQUIRED");
+    if (Number(attachment.byte_size) > 12 * 1024 * 1024)
       throw new Error("PDF_EXTRACTION_TOO_LARGE");
-    const bytes = await verifiedPdf(String(attachment.data.id));
+    const bytes = await verifiedPdf(String(attachment.id));
     const base64 = Buffer.from(bytes).toString("base64");
     const model = process.env.LOGIFA_PDF_MODEL?.trim() || process.env.OPENAI_MODEL?.trim();
     if (!model) throw new Error("AGENT_NOT_ENABLED");

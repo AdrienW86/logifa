@@ -58,6 +58,11 @@ export default function ServerDocument({
     totals: {net:string;vat:string;gross:string};
   } | null>(null);
   const [extracting, setExtracting] = useState(false);
+  const [quoteFiles, setQuoteFiles] = useState<Row[]>([]);
+  const [sourceQuotes, setSourceQuotes] = useState<Row[]>([]);
+  const [pdfToAttach, setPdfToAttach] = useState<File | null>(null);
+  const [attachingPdf, setAttachingPdf] = useState(false);
+  const [missingOriginal, setMissingOriginal] = useState(false);
   const [savedVersion, setSavedVersion] = useState("");
   const [clientKind, setClientKind] = useState("");
   const [clientSearch, setClientSearch] = useState("");
@@ -112,6 +117,9 @@ export default function ServerDocument({
         setClients(workspace.lists.clients.filter((row) => !row.archived_at));
         setProjects(workspace.lists.projects);
         setDocs([...workspace.lists.quotes, ...workspace.lists.invoices]);
+        setQuoteFiles(workspace.lists.document_files ?? []);
+        setSourceQuotes(workspace.lists.quotes);
+
         if (documentKind === "invoice" && query.get("fromQuote")) {
           const quoted = workspace.lists.quotes.find((row) =>
             row.id === query.get("fromQuote") && row.issuer_profile_id === issuerId);
@@ -354,6 +362,51 @@ export default function ServerDocument({
       {available && draft.kind === "facture" && source && !locked && (
         <div className={s.card} style={{marginBottom:16}}>
           <h3>Créer la facture depuis le devis PDF</h3>
+          {(() => {
+            const sourceQuote = sourceQuotes.find((row) => row.id === source);
+            const hasPdf = quoteFiles.some((row) => row.quote_id === source &&
+              (row.role === "original" || row.role === "signed"));
+            if ((hasPdf && !missingOriginal) || sourceQuote?.lifecycle !== "historical")
+              return null;
+            return (
+              <div role="group" aria-label="Compléter le PDF manquant" style={{marginBottom:16}}>
+                <p><strong>Le devis existe, mais aucun PDF original ou signé n'est encore associé.</strong>
+                  Choisissez le même PDF pour terminer l'import sans créer de doublon.</p>
+                <input type="file" accept="application/pdf,.pdf"
+                  aria-label="PDF original du devis historique"
+                  onChange={(event) => setPdfToAttach(event.target.files?.[0] ?? null)} />
+                <button type="button" disabled={!pdfToAttach || attachingPdf || extracting || busy}
+                  onClick={async () => {
+                    if (!pdfToAttach || !confirm("Associer définitivement ce PDF au devis historique existant ? Son contenu sera conservé sans modification.")) return;
+                    setAttachingPdf(true);
+                    try {
+                      const body = new FormData();
+                      body.set("confirmed", "true");
+                      body.set("issuer_id", issuer);
+                      body.set("quote_id", source);
+                      body.set("file", pdfToAttach);
+                      const result = await api("/api/documents/attach-original", {
+                        method: "POST", body,
+                      });
+                      setQuoteFiles((previous) => [...previous, {
+                        id: isRecord(result.archived) ? result.archived.id : "",
+                        quote_id: source,
+                        role: "original",
+                      }]);
+                      setPdfToAttach(null);
+                      setMissingOriginal(false);
+                      setMessage("PDF original associé au devis existant. Vous pouvez maintenant lancer l'extraction.");
+                    } catch (error) {
+                      setMessage(error instanceof Error ? error.message : "Impossible de rattacher ce PDF.");
+                    } finally {
+                      setAttachingPdf(false);
+                    }
+                  }}>
+                  {attachingPdf ? "Archivage du PDF…" : "Associer le PDF original"}
+                </button>
+              </div>
+            );
+          })()}
           <p>Extraction assistée depuis le PDF original archivé. Aucun tarif, taux de TVA ni quantité ne sera inventé. La facture restera en brouillon jusqu'à votre validation.</p>
           <div className={s.actions}>
             <button type="button" disabled={extracting || busy || !issuer}
@@ -371,7 +424,13 @@ export default function ServerDocument({
                   setPdfExtraction(result as unknown as NonNullable<typeof pdfExtraction>);
                   setMessage("Extraction terminée : relisez les prestations, prix, TVA et totaux avant d'appliquer.");
                 } catch (e) {
-                  setMessage(e instanceof Error ? e.message : "Analyse du PDF impossible.");
+                  const errorMessage = e instanceof Error ? e.message : "Analyse du PDF impossible.";
+                  if (errorMessage.includes("PDF_ORIGINAL_REQUIRED")) {
+                    setMissingOriginal(true);
+                    setMessage("Le devis est enregistré mais son PDF original manque. Ajoutez-le ci-dessus, puis relancez l'analyse.");
+                  } else {
+                    setMessage(errorMessage);
+                  }
                 } finally { setExtracting(false); }
               }}>
               {extracting ? "Analyse du PDF en cours…" : "Extraire les prestations du PDF"}
