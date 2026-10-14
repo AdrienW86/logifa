@@ -879,7 +879,7 @@ export default function ServerDocument({
           {draft.kind === "facture" && kind === "deposit" && !source && !locked && (
             <div className={s.card} role="group" aria-label="Acompte libre sans devis">
               <h3>Facture d'acompte libre — sans devis</h3>
-              <p>Vous pouvez établir un acompte sans devis. Indiquez précisément l'opération, le montant HT et le régime de TVA réel. Aucun montant ni taux ne sera supposé.</p>
+              <p>Vous pouvez établir un acompte sans devis. Indiquez précisément l'opération, le montant HT et le régime de TVA réel. Aucun montant ni taux ne sera supposé. Pour gérer plusieurs acomptes et le solde d'un même chantier sans devis, sélectionnez d'abord le chantier commun.</p>
               <label>Nature des travaux / prestation concernés
                 <input value={manualDepositText} maxLength={300} onChange={(e) => setManualDepositText(e.target.value)}
                   placeholder="Ex. Acompte avant travaux de réfection de couverture" />
@@ -1075,6 +1075,30 @@ export default function ServerDocument({
             >
               Émettre la version sauvegardée
             </button>
+            {draft.kind === "facture" && kind === "final" && id && !locked &&
+              (Boolean(source) || Boolean(project)) && (
+              <button type="button" disabled={busy} onClick={safe(async () => {
+                const deposits = docs.filter((d) =>
+                  d.client_id === client &&
+                  d.document_kind === "deposit" &&
+                  (d.lifecycle === "issued" || d.lifecycle === "historical") &&
+                  (source
+                    ? d.quote_id === source
+                    : d.project_id === project && !d.quote_id));
+                if (!deposits.length) {
+                  setMessage("Aucun acompte déjà facturé sur ce devis/chantier.");
+                  return;
+                }
+                if (!confirm(`Associer ${deposits.length} facture(s) d'acompte à cette finale ? Les montants déductibles et la TVA seront contrôlés par le serveur avant émission.`))
+                  return;
+                for (const deposit of deposits) {
+                  await command("link-deposit",{
+                    issuer_id:issuer,final_id:id,deposit_id:deposit.id,
+                  },true);
+                }
+                setMessage(`${deposits.length} acompte(s) associé(s) à la facture finale. Les déductions seront vérifiées lors de l'émission.`);
+              })}>Associer tous les acomptes déjà facturés à la finale</button>
+            )}
             {draft.kind === "facture" && kind === "final" && id && !locked && (
               <label>
                 Acompte déjà facturé à déduire
