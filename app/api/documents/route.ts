@@ -50,11 +50,23 @@ export async function POST(request: Request) {
     // Accept French formatting on input, then keep canonical decimal strings
     // for the existing exact-decimal billing validation.
     const amount = (key: string): string => {
-      const raw = string(key).trim().replace(/[\\u00a0\\u202f\\s]/g, "");
-      const normalized = raw.replace(",", ".");
-      if (!/^[0-9]+(?:\\.[0-9]{1,2})?$/.test(normalized))
-        throw new Error("HISTORY_AMOUNT_FORMAT");
-      return normalized;
+      const label: Record<string, string> = { total_net: "HT", total_vat: "TVA", total_gross: "TTC" };
+      let raw = string(key).trim().replace(/\s/g, "").replace(/€/g, "").replace(/EUR/gi, "");
+      // Accept French and international thousands separators, but reject ambiguous inputs.
+      if (raw.includes(",") && raw.includes(".")) {
+        raw = raw.lastIndexOf(",") > raw.lastIndexOf(".")
+          ? raw.replace(/\./g, "").replace(",", ".")
+          : raw.replace(/,/g, "");
+      } else if (/^\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?$/.test(raw)) {
+        raw = raw.replace(/\./g, "").replace(",", ".");
+      } else if (/^\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?$/.test(raw)) {
+        raw = raw.replace(/,/g, "");
+      } else {
+        raw = raw.replace(",", ".");
+      }
+      if (!/^\d+(?:\.\d{1,2})?$/.test(raw))
+        throw new Error("Montant " + (label[key] ?? key) + " invalide : saisissez par exemple 1250,50.");
+      return raw;
     };
     const totalNet = amount("total_net");
     const totalVat = amount("total_vat");
