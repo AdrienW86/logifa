@@ -120,21 +120,47 @@ export default function ServerDocument({
         setQuoteFiles(workspace.lists.document_files ?? []);
         setSourceQuotes(workspace.lists.quotes);
 
+        setAvailable(true);
         if (documentKind === "invoice" && query.get("fromQuote")) {
           const quoted = workspace.lists.quotes.find((row) =>
             row.id === query.get("fromQuote") && row.issuer_profile_id === issuerId);
           if (!quoted) throw new Error("Devis source introuvable pour cette entreprise.");
+          const sourceClient = workspace.lists.clients.find((row) =>
+            row.id === quoted.client_id && row.issuer_profile_id === issuerId);
+          if (!sourceClient) throw new Error("Client du devis introuvable dans cette entreprise.");
+          const fields = isRecord(sourceClient.editor_fields) ? sourceClient.editor_fields : {};
           setSource(value(quoted, "id"));
           setClient(value(quoted, "client_id"));
           setKind("final");
-          setMessage("Facture liée au devis " + value(quoted, "quote_number") +
-            ". Utilisez « Extraire les prestations du PDF » puis vérifiez chaque ligne avant la sauvegarde.");
+          const preparedDraft: EditorDraft = {
+            ...draft,
+            issuerScope: issuerId,
+            companyKey: "local-issuer-0",
+            kind: "facture",
+            reference: "BROUILLON",
+            isPaid: false,
+            showAcompte: false,
+            acompte: "0",
+            paymentDate: "",
+            paymentMethod: "",
+            lines: [],
+            prompt: "",
+            client: {
+              name: value(fields, "name") || value(sourceClient, "company_name"),
+              street: value(fields, "street") || value(sourceClient, "billing_address"),
+              cityZip: value(fields, "cityZip"),
+              phone: value(fields, "phone") || value(sourceClient, "phone"),
+              email: value(fields, "email") || value(sourceClient, "contact_email"),
+              workAddress: value(fields, "workAddress") || value(sourceClient, "work_address"),
+            },
+          };
+          onLoad(preparedDraft);
+          setMessage("Devis " + value(quoted, "quote_number") +
+            " et client " + preparedDraft.client.name +
+            " chargés. Associez son PDF si nécessaire, puis vérifiez les prestations extraites.");
+        } else {
+          setMessage("Connexion serveur disponible. Un brouillon n’a aucun numéro définitif.");
         }
-
-        setAvailable(true);
-        setMessage(
-          "Connexion serveur disponible. Un brouillon n’a aucun numéro définitif.",
-        );
         const documentId = query.get("document");
         if (documentId) {
           const detail = await api(
@@ -336,6 +362,33 @@ export default function ServerDocument({
       },
     });
   };
+  const extractQuotePdf = async (quoteId: string) => {
+    setExtracting(true);
+    setPdfExtraction(null);
+    try {
+      const result = await api("/api/documents/extract-quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmed: true, quoteId, issuerId: issuer }),
+      });
+      if (!Array.isArray(result.lines) || !Array.isArray(result.warnings) ||
+        !isRecord(result.totals)) throw new Error("Extraction incompatible.");
+      setPdfExtraction(result as unknown as NonNullable<typeof pdfExtraction>);
+      setMissingOriginal(false);
+      setMessage("Prestations extraites. Vérifiez les prix, quantités, TVA et totaux avant de les appliquer.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Analyse impossible.";
+      if (message.includes("PDF_ORIGINAL_REQUIRED")) {
+        setMissingOriginal(true);
+        setMessage("Le PDF manque dans les archives de ce devis. Sélectionnez-le et associez-le ci-dessous.");
+      } else {
+        setMessage("Extraction impossible : " + message);
+      }
+      throw error;
+    } finally {
+      setExtracting(false);
+    }
+  };
   const chosenClient = clients.find((row) => row.id === client);
   const knownAddresses =
     chosenClient && Array.isArray(chosenClient.addresses)
@@ -377,8 +430,11 @@ export default function ServerDocument({
                   onChange={(event) => setPdfToAttach(event.target.files?.[0] ?? null)} />
                 <button type="button" disabled={!pdfToAttach || attachingPdf || extracting || busy}
                   onClick={async () => {
-                    if (!pdfToAttach || !confirm("Associer définitivement ce PDF au devis historique existant ? Son contenu sera conservé sans modification.")) return;
+                    if (!pdfToAttach || !confirm(
+                      "Associer ce PDF au devis historique, puis l'analyser avec OpenAI ? Le PDF est conservé comme original immuable et transmis à OpenAI pour extraction. Aucun document fiscal n'est émis."
+                    )) return;
                     setAttachingPdf(true);
+                    let archived = false;
                     try {
                       const body = new FormData();
                       body.set("confirmed", "true");
@@ -388,6 +444,7 @@ export default function ServerDocument({
                       const result = await api("/api/documents/attach-original", {
                         method: "POST", body,
                       });
+                      archived = true;
                       setQuoteFiles((previous) => [...previous, {
                         id: isRecord(result.archived) ? result.archived.id : "",
                         quote_id: source,
@@ -395,45 +452,36 @@ export default function ServerDocument({
                       }]);
                       setPdfToAttach(null);
                       setMissingOriginal(false);
-                      setMessage("PDF original associé au devis existant. Vous pouvez maintenant lancer l'extraction.");
+                      setMessage("PDF associé au devis historique. Extraction en cours…");
+                      await extractQuotePdf(source);
                     } catch (error) {
-                      setMessage(error instanceof Error ? error.message : "Impossible de rattacher ce PDF.");
+                      if (!archived) {
+                        setMessage("Le PDF n'a pas été associé : " +
+                          (error instanceof Error ? error.message : "Erreur d'archivage."));
+                      } else {
+                        setMessage("PDF bien associé, mais extraction à relancer : " +
+                          (error instanceof Error ? error.message : "Erreur IA."));
+                      }
                     } finally {
                       setAttachingPdf(false);
                     }
                   }}>
-                  {attachingPdf ? "Archivage du PDF…" : "Associer le PDF original"}
+                  {attachingPdf ? "Association et analyse en cours…" : "Associer le PDF et extraire les prestations"}
                 </button>
               </div>
             );
           })()}
           <p>Extraction assistée depuis le PDF original archivé. Aucun tarif, taux de TVA ni quantité ne sera inventé. La facture restera en brouillon jusqu'à votre validation.</p>
           <div className={s.actions}>
-            <button type="button" disabled={extracting || busy || !issuer}
+            <button type="button"
+              disabled={extracting || attachingPdf || busy || !issuer ||
+                (!missingOriginal && !quoteFiles.some((row) => row.quote_id === source &&
+                  (row.role === "original" || row.role === "signed")))}
               onClick={async () => {
-                if (!confirm("Analyser le devis PDF par OpenAI ? Son contenu sera transmis au fournisseur d'IA pour extraction. Aucun document ne sera émis ni sauvegardé.")) return;
-                setExtracting(true);
-                setPdfExtraction(null);
-                try {
-                  const result = await api("/api/documents/extract-quote", {
-                    method:"POST", headers:{"Content-Type":"application/json"},
-                    body:JSON.stringify({confirmed:true,quoteId:source,issuerId:issuer}),
-                  });
-                  if (!Array.isArray(result.lines) || !Array.isArray(result.warnings))
-                    throw new Error("Extraction incompatible.");
-                  setPdfExtraction(result as unknown as NonNullable<typeof pdfExtraction>);
-                  setMessage("Extraction terminée : relisez les prestations, prix, TVA et totaux avant d'appliquer.");
-                } catch (e) {
-                  const errorMessage = e instanceof Error ? e.message : "Analyse du PDF impossible.";
-                  if (errorMessage.includes("PDF_ORIGINAL_REQUIRED")) {
-                    setMissingOriginal(true);
-                    setMessage("Le devis est enregistré mais son PDF original manque. Ajoutez-le ci-dessus, puis relancez l'analyse.");
-                  } else {
-                    setMessage(errorMessage);
-                  }
-                } finally { setExtracting(false); }
+                if (!confirm("Analyser ce devis PDF avec OpenAI ? Le PDF sera transmis pour extraction. Aucun document n'est émis ni enregistré.")) return;
+                try { await extractQuotePdf(source); } catch { /* Message affiché par extractQuotePdf. */ }
               }}>
-              {extracting ? "Analyse du PDF en cours…" : "Extraire les prestations du PDF"}
+              {extracting ? "Analyse du PDF en cours…" : "Relancer l'extraction du PDF"}
             </button>
           </div>
           {pdfExtraction && (

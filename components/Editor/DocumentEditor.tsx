@@ -136,6 +136,11 @@ export default function DocumentEditor({
         selectedIssuer(storageScope))
       : "",
   );
+  const [historicalQuoteId] = useState(() =>
+    typeof window !== "undefined"
+      ? (new URLSearchParams(window.location.search).get("fromQuote") ?? "")
+      : "",
+  );
   const [issuers, setIssuers] = useState(companies);
   const [agentEnabled, setAgentEnabled] = useState(false);
   useEffect(() => {
@@ -178,7 +183,7 @@ export default function DocumentEditor({
     fileRef = useRef<HTMLInputElement>(null),
     lineRef = useRef<HTMLDivElement>(null);
   const storageKey = storageScope
-    ? `logifa:editor:v1:${storageScope}:${storageIssuer ? storageIssuer + ":" : ""}${kind}`
+    ? `logifa:editor:v1:${storageScope}:${storageIssuer ? storageIssuer + ":" : ""}${kind}${historicalQuoteId ? ":historical:" + historicalQuoteId : ""}`
     : null;
   const changed = JSON.stringify(draft) !== saved;
   const company =
@@ -561,6 +566,7 @@ export default function DocumentEditor({
           }}
           onLock={setServerLocked}
         />
+        {!historicalQuoteId && (
         <PromptComposer
           kind={kind}
           agentEnabled={agentEnabled}
@@ -624,6 +630,7 @@ export default function DocumentEditor({
             }
           }}
         />
+        )}
         <div className={s.columns}>
           <fieldset
             disabled={serverLocked}
