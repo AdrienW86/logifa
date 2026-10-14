@@ -18,6 +18,7 @@ import {
 import { companies } from "@/app/company";
 import s from "./workspace.module.css";
 import { MailSettings, SendDocument } from "./Mail";
+import TariffCatalogue from "./TariffCatalogue";
 
 export type Section =
   | "dashboard"
@@ -70,7 +71,7 @@ export default function Workspace({ section }: { section: Section }) {
   const activeIssuer = useRef("");
   const formRef = useRef<HTMLFormElement | null>(null);
   const [knownIssuers, setKnownIssuers] = useState<Row[]>([]);
-  const [settingsTab, setSettingsTab] = useState<"documents" | "mail" | "technical">("documents");
+  const [settingsTab, setSettingsTab] = useState<"documents" | "tariffs" | "mail" | "technical">("documents");
   const loadSequence = useRef(0);
   const load = useCallback(async (id: string) => {
     if (activeIssuer.current !== id) return;
@@ -394,6 +395,7 @@ export default function Workspace({ section }: { section: Section }) {
           <p className={s.intro}>Choisissez ce que vous voulez configurer. Les réglages techniques restent séparés des documents.</p>
           <div className={s.settingsTabs} role="group" aria-label="Catégorie de paramètres">
             <button type="button" aria-pressed={settingsTab === "documents"} onClick={() => setSettingsTab("documents")}>Documents et modèles</button>
+            <button type="button" aria-pressed={settingsTab === "tariffs"} onClick={() => setSettingsTab("tariffs")}>Tarifs de l'entreprise</button>
             <button type="button" aria-pressed={settingsTab === "mail"} onClick={() => setSettingsTab("mail")}>Envoi par e-mail</button>
             <button type="button" aria-pressed={settingsTab === "technical"} onClick={() => setSettingsTab("technical")}>Connexions et fiscalité</button>
           </div>
@@ -404,6 +406,7 @@ export default function Workspace({ section }: { section: Section }) {
               <Link className={s.settingTile} href="/gestion/documents"><strong>Archives</strong><span>PDF et documents conservés</span></Link>
             </div>
           )}
+          {settingsTab === "tariffs" && <TariffCatalogue key={issuer} issuer={issuer} />}
           {settingsTab === "mail" && <MailSettings key={issuer} issuer={issuer} />}
           {settingsTab === "technical" && (
             <div className={s.settingsGrid}>
