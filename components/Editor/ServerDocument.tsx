@@ -52,6 +52,12 @@ export default function ServerDocument({
     purchaseOrder: "",
     operationCategory: "",
   };
+  const [pdfExtraction, setPdfExtraction] = useState<{
+    lines: { type: "normal" | "title"; name: string; quantity: string; unit: string; price: string; tva: string; evidence: string }[];
+    warnings: string[];
+    totals: {net:string;vat:string;gross:string};
+  } | null>(null);
+  const [extracting, setExtracting] = useState(false);
   const [savedVersion, setSavedVersion] = useState("");
   const [clientKind, setClientKind] = useState("");
   const [clientSearch, setClientSearch] = useState("");
@@ -113,8 +119,8 @@ export default function ServerDocument({
           setSource(value(quoted, "id"));
           setClient(value(quoted, "client_id"));
           setKind("final");
-          setMessage("Facture brouillon liée au devis " + value(quoted, "quote_number") +
-            ". Reportez les prestations depuis le PDF original et vérifiez les montants avant d’enregistrer. Aucune facture n’est émise automatiquement.");
+          setMessage("Facture liée au devis " + value(quoted, "quote_number") +
+            ". Utilisez « Extraire les prestations du PDF » puis vérifiez chaque ligne avant la sauvegarde.");
         }
 
         setAvailable(true);
@@ -345,6 +351,62 @@ export default function ServerDocument({
     >
       <h2>Cycle de vie et sauvegarde serveur</h2>
       <p role="status">{message}</p>
+      {available && draft.kind === "facture" && source && !locked && (
+        <div className={s.card} style={{marginBottom:16}}>
+          <h3>Créer la facture depuis le devis PDF</h3>
+          <p>Extraction assistée depuis le PDF original archivé. Aucun tarif, taux de TVA ni quantité ne sera inventé. La facture restera en brouillon jusqu'à votre validation.</p>
+          <div className={s.actions}>
+            <button type="button" disabled={extracting || busy || !issuer}
+              onClick={async () => {
+                if (!confirm("Analyser le devis PDF par OpenAI ? Son contenu sera transmis au fournisseur d'IA pour extraction. Aucun document ne sera émis ni sauvegardé.")) return;
+                setExtracting(true);
+                setPdfExtraction(null);
+                try {
+                  const result = await api("/api/documents/extract-quote", {
+                    method:"POST", headers:{"Content-Type":"application/json"},
+                    body:JSON.stringify({confirmed:true,quoteId:source,issuerId:issuer}),
+                  });
+                  if (!Array.isArray(result.lines) || !Array.isArray(result.warnings))
+                    throw new Error("Extraction incompatible.");
+                  setPdfExtraction(result as unknown as NonNullable<typeof pdfExtraction>);
+                  setMessage("Extraction terminée : relisez les prestations, prix, TVA et totaux avant d'appliquer.");
+                } catch (e) {
+                  setMessage(e instanceof Error ? e.message : "Analyse du PDF impossible.");
+                } finally { setExtracting(false); }
+              }}>
+              {extracting ? "Analyse du PDF en cours…" : "Extraire les prestations du PDF"}
+            </button>
+          </div>
+          {pdfExtraction && (
+            <div>
+              <h4>Prévisualisation — {pdfExtraction.lines.length} ligne(s)</h4>
+              <p>Totaux lus : HT {pdfExtraction.totals.net || "non trouvé"} € · TVA {pdfExtraction.totals.vat || "non trouvée"} € · TTC {pdfExtraction.totals.gross || "non trouvé"} €</p>
+              <div style={{overflowX:"auto"}}>
+                <table><thead><tr><th>Prestation</th><th>Qté</th><th>Unité</th><th>PU HT</th><th>TVA %</th></tr></thead>
+                <tbody>{pdfExtraction.lines.map((line,i)=><tr key={i}>
+                  <td>{line.name}</td><td>{line.quantity || "À vérifier"}</td>
+                  <td>{line.unit || "À vérifier"}</td><td>{line.price || "À vérifier"}</td>
+                  <td>{line.tva || "À vérifier"}</td>
+                </tr>)}</tbody></table>
+              </div>
+              {pdfExtraction.warnings.length > 0 &&
+                <div role="alert"><strong>Points à contrôler</strong><ul>
+                  {pdfExtraction.warnings.map((w,i)=><li key={i}>{w}</li>)}
+                </ul></div>}
+              <button type="button" disabled={busy} onClick={()=>{
+                if (draft.lines.length && !confirm("Remplacer les lignes déjà saisies par les lignes extraites ?")) return;
+                const incoming = pdfExtraction.lines.map((line)=>({
+                  type:line.type, key:crypto.randomUUID(), name:line.name,
+                  quantity:line.quantity, unit:line.unit, price:line.price,tva:line.tva,
+                }));
+                onLoad({...draft,lines:incoming,isPaid:false,showAcompte:false,acompte:"0"});
+                setPdfExtraction(null);
+                setMessage("Lignes reprises dans le brouillon. Complétez les valeurs manquantes et contrôlez les totaux avant la sauvegarde.");
+              }}>Appliquer les lignes au brouillon</button>
+            </div>
+          )}
+        </div>
+      )}
       {available && clientSearch && !locked && (
         <div className={s.actions} aria-label="Suggestions de clients">
           {clients
