@@ -407,29 +407,7 @@ export default function Workspace({ section }: { section: Section }) {
             <button disabled={!data || busy} onClick={() => open("legal")}>
               Nouvelle entité juridique
             </button>
-            <button
-              disabled={!data || busy}
-              onClick={() =>
-                void mutate(
-                  "import-companies",
-                  {},
-                  "Importer les neuf profils locaux sans fusion ni rattachement juridique automatique ?",
-                )
-              }
-            >
-              Reprendre les neuf profils locaux
-            </button>
           </div>
-          {!data && (
-            <ul>
-              {companies.map((company, index) => (
-                <li key={index}>
-                  {company.name} · profil local {index + 1} (ID historique{" "}
-                  {company.id})
-                </li>
-              ))}
-            </ul>
-          )}
           <details className={s.card} style={{marginTop:20}}>
             <summary style={{cursor:"pointer",fontWeight:600}}>Identités juridiques · {entities.length} fiches — afficher et modifier</summary>
             <p>Les profils commerciaux et leurs identités juridiques sont séparés pour préserver les numérotations et paramètres fiscaux.</p>
