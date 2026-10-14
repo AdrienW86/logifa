@@ -21,6 +21,9 @@ export async function POST(request: Request) {
     if (!isRecord(data) || data.confirmed !== true ||
       data.confirmation !== "COPIER LA CONFIGURATION")
       throw new Error("HUMAN_CONFIRMATION_REQUIRED");
+    if (typeof data.source_issuer !== "string" ||
+      typeof data.destination_issuer !== "string")
+      throw new Error("MAIL_TRANSFER_SCOPE");
     const source = uuid(data.source_issuer);
     const destination = uuid(data.destination_issuer);
     if (source === destination) throw new Error("MAIL_TRANSFER_SCOPE");
