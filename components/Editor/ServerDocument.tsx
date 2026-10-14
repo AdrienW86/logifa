@@ -250,13 +250,7 @@ export default function ServerDocument({
       setBusy(false);
     }
   };
-  const save = async () => {
-    if (
-      !confirm(
-        "Enregistrer ce brouillon sur le serveur avec les données du formulaire ? Aucun numéro ne sera attribué.",
-      )
-    )
-      return;
+  const persistPreparation = async () => {
     const result = await command("save", {
       issuer_id: issuer,
       kind: documentKind,
@@ -291,7 +285,48 @@ export default function ServerDocument({
     setRevision(result.revision);
     setSavedVersion(version);
     onLoad(draft, true);
-    setMessage("Brouillon sauvegardé sur le serveur.");
+    setMessage("Saisie enregistrée en préparation, sans numéro fiscal.");
+    return result.id;
+  };
+  const save = async () => {
+    if (!confirm("Conserver cette saisie en préparation, sans attribuer de numéro fiscal ?")) return;
+    await persistPreparation();
+  };
+  const issueWithNumber = async () => {
+    if (draft.kind !== "facture" || !issuer || !client)
+      throw new Error("Choisissez une entreprise et un client avant d'enregistrer la facture.");
+    if (!fiscal.operationDate || !fiscal.dueDate || !fiscal.operationCategory)
+      throw new Error("Renseignez la date de prestation (ou d'acompte), l'échéance et la nature des opérations.");
+    if (!confirm("ENREGISTRER ET ÉMETTRE DÉFINITIVEMENT cette facture ? Un numéro fiscal sera attribué. La facture ne pourra plus être modifiée librement. L'envoi au client reste séparé."))
+      return;
+    const savedId = await persistPreparation();
+    let issued: Row;
+    try {
+      issued = await command("issue", {
+        issuer_id: issuer, kind: "invoice", id: savedId, date: draft.date,
+      }, true);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "Émission non confirmée";
+      if (detail.includes("LOGIFA_NUMBERING_RECONCILIATION_REQUIRED")) {
+        setMessage("Saisie conservée, mais émission bloquée : la série de numéros de cette entreprise doit être réconciliée avant de produire une facture réelle.");
+        return;
+      }
+      setMessage("Saisie conservée. Émission non confirmée : "+detail+". Vérifiez le statut serveur avant de réessayer.");
+      return;
+    }
+    const number = value(issued,"number") || value(issued,"invoice_number");
+    if (!number) throw new Error("Émission enregistrée mais numéro non renvoyé : rechargez le document avant toute nouvelle action.");
+    setLocked(true);
+    onLock(true);
+    onLoad({...draft,reference:number});
+    setMessage("Facture "+number+" émise et verrouillée. Archivage PDF en cours…");
+    try {
+      await api(`/api/invoices/${savedId}/pdf?issuer=${issuer}&confirmed=1`, {method:"POST"});
+      setMessage("Facture "+number+" enregistrée, numérotée et PDF original archivé. Vous pouvez l'envoyer au client.");
+    } catch (error) {
+      setMessage("Facture "+number+" bien émise, mais archivage PDF à terminer depuis « Archiver l'original ». Aucun deuxième numéro ne doit être demandé : "+
+        (error instanceof Error ? error.message : "Erreur archivage"));
+    }
   };
   const createClient = async () => {
     if (clientKind !== "individual" && clientKind !== "professional")
@@ -979,12 +1014,14 @@ export default function ServerDocument({
                   </button>
                 </>
               )}
-            <button
-              type="button"
-              disabled={busy || locked || !client}
-              onClick={safe(save)}
-            >
-              Sauvegarder le brouillon serveur
+            {draft.kind === "facture" && (
+              <button type="button" disabled={busy || locked || !client}
+                onClick={safe(issueWithNumber)}>
+                Enregistrer et numéroter la facture
+              </button>
+            )}
+            <button type="button" disabled={busy || locked || !client} onClick={safe(save)}>
+              {draft.kind === "facture" ? "Conserver ma saisie (sans numéro)" : "Enregistrer le devis en préparation"}
             </button>
             {id && !locked && (
               <a
