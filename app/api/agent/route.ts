@@ -6,7 +6,9 @@ import {
 } from "@/lib/workspace/http";
 import { agentEnabled, proposeWithOpenAI } from "@/lib/agent/openai";
 import { validatedAgentProposal } from "@/lib/agent/proposal";
-import { isDraftShape } from "@/lib/editor/contracts";
+import { isDraftShape, isRecord } from "@/lib/editor/contracts";
+import { checkedRpc } from "@/lib/services/billing";
+import { databaseForAdmin } from "@/lib/supabase/server";
 import { object, field } from "@/lib/workspace/input";
 import { companies } from "@/app/company";
 import { proposalContext } from "@/lib/agent/context";
@@ -49,9 +51,23 @@ export async function POST(request: Request) {
         };
     if (typeof issuer.name !== "string" || !issuer.name.trim())
       throw new Error("INPUT_ISSUER");
-    const context = proposalContext(draft, { name: issuer.name });
+    const tariffs = draft.issuerScope
+      ? await checkedRpc(await databaseForAdmin(), "logifa_issuer_tariffs", {
+          p_action:"approved",p_issuer:draft.issuerScope,p_data:{},
+        })
+      : {};
+    const items:unknown = tariffs.items;
+    const approvedCatalogue = Array.isArray(items) ?
+      items.filter(isRecord).map((item) => ({
+        name: typeof item.description === "string" ? item.description : "",
+        unit: typeof item.unit === "string" ? item.unit : "",
+        price: Number(item.price_ht),
+        category: "Tarifs approuvés",
+      })).filter((item) => item.name && item.unit &&
+        Number.isFinite(item.price) && item.price >= 0).slice(0,200) : [];
+    const context = proposalContext(draft, { name: issuer.name }, approvedCatalogue);
     const raw = await proposeWithOpenAI(admin, prompt, context);
-    const result = validatedAgentProposal(raw, prompt, draft, companies);
+    const result = validatedAgentProposal(raw, prompt, draft, companies, approvedCatalogue);
     const diagnostics = {
       ...result.diagnostics,
       request: {
