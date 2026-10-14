@@ -16,6 +16,7 @@ export interface ManagedPayload extends PdfPayload {
   legalFooter: string[];
   deductions: { label: string; amount: number }[];
   netDue: number;
+  contract?: { reference: string; totalGross: number; previousIssuedGross: number; remainingToInvoice: number };
 }
 import { jsPDF } from "jspdf";
 import { autoTable } from "jspdf-autotable";
@@ -45,6 +46,7 @@ export const generateManagedInvoice = (
     legalFooter,
     deductions,
     netDue,
+    contract,
   }: ManagedPayload,
   reference?: { creationDate: string; fileId: string },
 ) => {
@@ -223,6 +225,13 @@ export const generateManagedInvoice = (
   );
 
   pdf.setTextColor(0, 0, 0);
+  if (contract) {
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(8);
+    pdf.text(`Reste à facturer : ${contract.remainingToInvoice.toFixed(2)} €`,
+      totalX + 70 - 2, finalY + 27, { align: "right" });
+    pdf.setFontSize(10);
+  }
 
   //pdf.text(`ACOMPTE 30% : 2971,21 €`, totalX + 70 - 2, finalY + 27, { align: "right" });
 
@@ -281,6 +290,19 @@ export const generateManagedInvoice = (
     let annexY = 20;
     pdf.text("Details et mentions complementaires", 15, annexY);
     annexY += 10;
+    if (contract) {
+      pdf.setFontSize(10);
+      pdf.text(`Reference du devis : ${contract.reference}`, 15, annexY);
+      annexY += 7;
+      pdf.text(`Montant total contractuel TTC : ${contract.totalGross.toFixed(2)} EUR`, 15, annexY);
+      annexY += 7;
+      pdf.text(`Acomptes deja factures : ${contract.previousIssuedGross.toFixed(2)} EUR`, 15, annexY);
+      annexY += 7;
+      pdf.text(`Montant facture sur cette piece : ${totalTTC.toFixed(2)} EUR`, 15, annexY);
+      annexY += 7;
+      pdf.text(`Reste a facturer (non assimilable a une dette exigible) : ${contract.remainingToInvoice.toFixed(2)} EUR`, 15, annexY);
+      annexY += 12;
+    }
     for (const row of deductions) {
       pdf.text(`${row.label} : ${row.amount.toFixed(2)} EUR`, 15, annexY);
       annexY += 7;

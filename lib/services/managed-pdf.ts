@@ -159,6 +159,35 @@ export async function managedInvoiceBytes(
       ", ",
     );
   }
+  // Amounts already invoiced (not necessarily paid) against the same quote.
+  // Do not mistake this for received payments or use the quote total as the
+  // amount due on this installment invoice.
+  let contract: ManagedPayload["contract"];
+  if (kind === "invoice" &&
+      invoice.document_kind === "deposit" &&
+      typeof invoice.quote_id === "string" && invoice.quote_id) {
+    const quote = await scopedRecord("quotes", invoice.quote_id, issuerId);
+    const linked = await db.from("invoices").select("id,total_gross")
+      .eq("quote_id", invoice.quote_id)
+      .eq("document_kind", "deposit")
+      .in("lifecycle", ["issued", "historical"]);
+    if (linked.error) throw persistenceError(linked.error);
+    const entries: unknown = linked.data;
+    if (!Array.isArray(entries) || !entries.every(isRecord))
+      throw new Error("PERSISTENCE_RESPONSE_INVALID");
+    const priorMinor = entries.filter((row) => row.id !== invoiceId)
+      .reduce((sum, row) => sum + Math.round(decimal(row.total_gross) * 100), 0);
+    const fullMinor = Math.round(decimal(quote.total_gross) * 100);
+    const currentMinor = Math.round(decimal(invoice.total_gross) * 100);
+    if (fullMinor <= 0 || priorMinor + currentMinor > fullMinor)
+      throw new Error("DEPOSIT_EXCEEDS_CONTRACT");
+    contract = {
+      reference: value(quote, "quote_number").trim(),
+      totalGross: fullMinor / 100,
+      previousIssuedGross: priorMinor / 100,
+      remainingToInvoice: (fullMinor - priorMinor - currentMinor) / 100,
+    };
+  }
   const payload: ManagedPayload = {
     client: {
       name: value(fields, "name") || value(client, "company_name"),
@@ -219,6 +248,7 @@ export async function managedInvoiceBytes(
     customInvoiceNumber: "",
     customInvoiceDate: "",
     logoBytes,
+    contract,
     documentTitle:
       invoice.document_kind === "deposit"
         ? "FACTURE D'ACOMPTE"
