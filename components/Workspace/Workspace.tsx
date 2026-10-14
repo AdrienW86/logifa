@@ -218,21 +218,6 @@ export default function Workspace({ section }: { section: Section }) {
         delete payload[key];
     }
     if (form === "client") {
-      const rate = String(fd.get("preferred_vat_rate") ?? "");
-      delete payload.preferred_vat_rate;
-      if (!["", "0", "5.5", "10", "20"].includes(rate)) {
-        setError("Taux de TVA habituel invalide.");
-        return;
-      }
-      const prior = editing.editor_fields;
-      const existingFields = isRecord(prior) ? prior : {};
-      const editorFields: Row = {
-        name: "", street: "", cityZip: "", phone: "", email: "", workAddress: "",
-        ...existingFields,
-      };
-      if (rate) editorFields.preferred_vat_rate = rate;
-      else delete editorFields.preferred_vat_rate;
-      payload.editor_fields = editorFields;
       try {
         payload.addresses = JSON.parse(String(fd.get("addresses") || "[]"));
       } catch {
@@ -337,30 +322,15 @@ export default function Workspace({ section }: { section: Section }) {
           </div>
         </details>
       </nav>
-      <div className={s.actions}>
-        <label>
-          Entreprise active{" "}
-          <select
-            aria-label="Entreprise de gestion"
-            value={issuer}
-            onChange={(event) => {
-              if (user) selectIssuer(user.id, event.target.value);
-            }}
-          >
-            <option value="">Choisir un émetteur</option>
-            {issuers
-              .filter((row) => row.active !== false)
-              .map((row) => (
-                <option key={value(row, "id")} value={value(row, "id")}>
-                  {value(row, "commercial_name")}
-                </option>
-              ))}
-          </select>
-        </label>
-        <button disabled={busy} onClick={() => void load(issuer)}>
-          Actualiser
-        </button>
-      </div>
+      {section !== "entreprises" && (
+        <div className={s.actions}>
+          <Link href="/gestion/entreprises" className={s.settingTile}>
+            <strong>Entreprise : {issuers.find((row) => value(row, "id") === issuer)?.commercial_name?.toString() || "Aucune sélection"}</strong>
+            <span>Changer d’entreprise</span>
+          </Link>
+          <button disabled={busy} onClick={() => void load(issuer)}>Actualiser</button>
+        </div>
+      )}
       {error && (
         <p role="alert" className={s.notice}>
           {error}
@@ -819,53 +789,43 @@ export default function Workspace({ section }: { section: Section }) {
       {data && section === "entreprises" && (
         <section className={s.businessArea}>
           <div className={s.businessHeadline}>
-            <div><h2>Vos entreprises</h2><p>{businessRows.length} profil(s) hors recettes techniques</p></div>
+            <div>
+              <h2>Entreprises</h2>
+              <p>Choisissez une entreprise pour ouvrir son espace. Chaque entreprise possède ses propres clients et documents.</p>
+            </div>
             <button disabled={busy} onClick={() => open("issuer")}>+ Ajouter une entreprise</button>
           </div>
-          <div className={s.businessCards}>
-          {businessRows.map((row) => (
-            <article className={s.card} key={value(row, "id")}>
-              <h3>{value(row, "commercial_name")}</h3>
-              <p>
-                {value(row, "address")} ·{" "}
-                {row.legal_entity_id
-                  ? "Identité juridique liée"
-                  : "Identité juridique à qualifier"}
-              </p>
-              <div className={s.actions}>
-                <button onClick={() => open("issuer", row)}>Modifier</button>
-                <button
-                  disabled={row.active === false || busy}
-                  onClick={() =>
-                    void mutate(
-                      "deactivate-issuer",
-                      { issuer_id: row.id, confirmation: "DESACTIVER" },
-                      "Désactiver cet émetteur en conservant tous ses historiques comptables ?",
-                    )
-                  }
-                >
-                  Désactiver
-                </button>
-              </div>
-            </article>
-          ))}
- 
-          </div>
-          {testIssuers.length > 0 && (
-            <details className={s.testArchive}>
-              <summary>Recettes techniques · {testIssuers.length} profils de test (masqués de la liste principale)</summary>
-              <p>Ces profils sont conservés sans modification. Ils ne doivent pas être supprimés automatiquement.</p>
-              <div className={s.businessCards}>
-                {testIssuers.map((row) => (
-                  <article className={s.card} key={value(row, "id")}>
-                    <h3>{value(row, "commercial_name")}</h3>
-                    <p>{row.active === false ? "Inactif" : "Actif"} · données de recette</p>
-                    <button onClick={() => open("issuer", row)}>Consulter / modifier</button>
-                  </article>
-                ))}
-              </div>
-            </details>
+          {businessRows.filter((row) => row.active !== false).length === 0 && (
+            <div className={s.card}>
+              <h3>Votre espace est prêt</h3>
+              <p>Ajoutez votre première entreprise émettrice, puis ses clients et ses documents.</p>
+              <button disabled={busy} onClick={() => open("issuer")}>Créer ma première entreprise</button>
+            </div>
           )}
+          <div className={s.businessCards}>
+            {businessRows.filter((row) => row.active !== false).map((row) => (
+              <article className={s.card} key={value(row, "id")}>
+                <button className={s.enterpriseOpen} onClick={() => {if (user) selectIssuer(user.id,value(row,"id"));}}>
+                  <span className={s.enterpriseSymbol}>{value(row,"commercial_name").slice(0,1).toUpperCase()}</span>
+                  <strong>{value(row,"commercial_name")}</strong>
+                  <small>{value(row,"city_zip") || value(row,"address") || "Coordonnées à compléter"}</small>
+                  <span>Ouvrir l’espace entreprise →</span>
+                </button>
+                {issuer === row.id && (
+                  <div className={s.enterpriseTools}>
+                    <h3>Espace {value(row,"commercial_name")}</h3>
+                    <Link href="/gestion/clients">Clients</Link>
+                    <Link href="/gestion/devis">Devis</Link>
+                    <Link href="/gestion/factures">Factures</Link>
+                    <Link href="/gestion/documents">Importer un ancien devis ou une facture</Link>
+                    <Link href="/gestion/parametres">Modèles et paramètres</Link>
+                    <button onClick={() => open("issuer",row)}>Modifier l’entreprise</button>
+                    <button onClick={() => open("legal",entities.find((e) => e.id === row.legal_entity_id) ?? {})}>Identité juridique · SIRET et TVA</button>
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
         </section>
       )}
       {chosenClient && section !== "clients" && (
@@ -1054,17 +1014,6 @@ export default function Workspace({ section }: { section: Section }) {
               ])}
               {field("default_vat_rate", "Taux TVA par défaut")}
               {field("vat_number", "Numéro TVA")}
-              <label>
-                Taux de TVA habituel du client (facultatif)
-                <select name="preferred_vat_rate" defaultValue={typeof editing.editor_fields === "object" && editing.editor_fields !== null && !Array.isArray(editing.editor_fields) ? String((editing.editor_fields as Row).preferred_vat_rate ?? "") : ""}>
-                  <option value="">À déterminer sur le devis</option>
-                  <option value="0">0 %</option>
-                  <option value="5.5">5,5 %</option>
-                  <option value="10">10 %</option>
-                  <option value="20">20 %</option>
-                </select>
-                <small>Préférence indicative uniquement : la TVA applicable est vérifiée pour chaque prestation et chaque document.</small>
-              </label>
               {field("iban", "IBAN")}
               {field("bic", "BIC")}
               {field("bank_name", "Banque")}

@@ -211,3 +211,11 @@
 .clientChoices button {padding:7px 11px;font-size:13px;background:#fff;border:1px solid #dae7dd;border-radius:99px;}
 .clientChoices button[aria-pressed="true"] {background:#164f38;color:white;border-color:#164f38;}
 .clientChooser small,.form small {color:#62766a;font-size:12px;line-height:1.45;}
+
+.enterpriseOpen {width:100%;display:grid;justify-items:start;gap:10px;text-align:left;background:transparent!important;border:0!important;padding:0!important;}
+.enterpriseOpen strong {font-size:20px;color:#183a30;}
+.enterpriseOpen small {font-size:13px;color:#637b6b;}
+.enterpriseOpen span:last-child {font-weight:700;color:#176943;}
+.enterpriseSymbol {width:48px;height:48px;display:grid;place-items:center;border-radius:12px;background:#e4f1e8;color:#185439;font-size:22px;font-weight:700;}
+.enterpriseTools {display:grid;gap:9px;border-top:1px solid #deebe1;margin-top:18px;padding-top:18px;}
+.enterpriseTools a,.enterpriseTools button {display:block;text-align:left;padding:11px 12px;border:1px solid #dce8e0;border-radius:9px;background:#f8faf8;color:#194532;font-weight:600;font-size:14px;}
