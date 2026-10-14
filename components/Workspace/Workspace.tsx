@@ -262,6 +262,7 @@ export default function Workspace({ section }: { section: Section }) {
       if (form === "issuer") {
         const associated = entities.find((entity) => entity.id === editing.legal_entity_id);
         const fiscal: Row = {
+          ...(associated ?? {}),
           issuer_id: issuer, key,
           legal_name: String(fd.get("commercial_name") ?? "").trim(),
           siret: String(fd.get("source_siret") ?? "").trim(),
