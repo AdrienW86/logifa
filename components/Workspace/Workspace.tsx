@@ -77,7 +77,7 @@ export default function Workspace({ section }: { section: Section }) {
       if (sequence !== loadSequence.current || activeIssuer.current !== id)
         return;
       setData(next);
-      setKnownIssuers(next.lists.issuer_profiles);
+      setKnownIssuers(next.lists.issuer_profiles.filter((row) => !(isRecord(row.metadata) && row.metadata.legacy_hidden === true)));
       setError("");
     } catch (e) {
       if (sequence === loadSequence.current && activeIssuer.current === id)
