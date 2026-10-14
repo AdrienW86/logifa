@@ -12,6 +12,7 @@ import { isDraftShape, isRecord } from "@/lib/editor/contracts";
 import type { EditorDraft, Company } from "@/types/editor";
 import s from "../Workspace/workspace.module.css";
 import { depositProposal } from "@/lib/billing/deposit-proposal";
+import { suggestDeposit } from "@/lib/billing/deposit-schedule";
 import { documentInput } from "@/lib/workspace/input";
 import { SendDocument } from "../Workspace/Mail";
 
@@ -66,6 +67,8 @@ export default function ServerDocument({
   const [savedVersion, setSavedVersion] = useState("");
   const [clientKind, setClientKind] = useState("");
   const [clientSearch, setClientSearch] = useState("");
+  const [manualDepositText, setManualDepositText] = useState("");
+  const [manualDepositVat, setManualDepositVat] = useState("");
   const [depositAmount, setDepositAmount] = useState(""),
     [depositMode, setDepositMode] = useState<"amount" | "percent">("amount");
   const version = JSON.stringify({
@@ -838,6 +841,72 @@ export default function ServerDocument({
             acompte doit décrire seulement l’opération facturée. Une finale
             reprend le périmètre réel et ses acomptes déjà facturés.
           </p>
+          {draft.kind === "facture" && kind === "deposit" && !source && !locked && (
+            <div className={s.card} role="group" aria-label="Acompte libre sans devis">
+              <h3>Facture d'acompte libre — sans devis</h3>
+              <p>Vous pouvez établir un acompte sans devis. Indiquez précisément l'opération, le montant HT et le régime de TVA réel. Aucun montant ni taux ne sera supposé.</p>
+              <label>Nature des travaux / prestation concernés
+                <input value={manualDepositText} maxLength={300} onChange={(e) => setManualDepositText(e.target.value)}
+                  placeholder="Ex. Acompte avant travaux de réfection de couverture" />
+              </label>
+              <label>Montant de cet acompte HT (€)
+                <input inputMode="decimal" value={depositAmount} onChange={(e)=>setDepositAmount(e.target.value)}
+                  placeholder="Montant HT à facturer, libre" />
+              </label>
+              <label>Taux de TVA applicable (choix obligatoire)
+                <select value={manualDepositVat} onChange={(e)=>setManualDepositVat(e.target.value)}>
+                  <option value="">À vérifier et sélectionner</option>
+                  <option value="0">0 % — régime non redevable ou exonéré à confirmer</option>
+                  <option value="5.5">5,5 %</option>
+                  <option value="10">10 %</option>
+                  <option value="20">20 %</option>
+                </select>
+              </label>
+              <button type="button" disabled={busy} onClick={safe(async()=>{
+                const amount = depositAmount.trim().replace(",",".");
+                if (!/^\d+(?:\.\d{1,2})?$/.test(amount) || Number(amount)<=0)
+                  throw new Error("Indiquez un montant HT positif en euros.");
+                if (!manualDepositVat || !manualDepositText.trim())
+                  throw new Error("Précisez la nature des travaux et validez la TVA applicable.");
+                if (draft.lines.length && !confirm("Remplacer les lignes existantes par cet acompte libre ?")) return;
+                onLoad({...draft,lines:[{
+                  key:crypto.randomUUID(),type:"normal",name:manualDepositText.trim(),
+                  quantity:"1",unit:"forfait",price:amount,tva:manualDepositVat,
+                }]});
+                setMessage("Acompte libre préparé. Vérifiez la TVA et les données avant d'enregistrer.");
+              })}>Insérer cet acompte dans la facture</button>
+            </div>
+          )}
+          {draft.kind === "facture" && kind === "deposit" && source && !locked && (() => {
+            const quote = docs.find((d) => d.id === source && "quote_number" in d);
+            if (!quote) return null;
+            const previous = docs.filter((d) => d.quote_id === source &&
+              d.document_kind === "deposit" && d.id !== id &&
+              (d.lifecycle === "issued" || d.lifecycle === "historical"));
+            const base = Number(quote.total_gross);
+            if (!Number.isFinite(base) || base<=0) return <p>Montant du devis source indisponible.</p>;
+            const total = base.toFixed(2);
+            const previousAmounts = previous.map((d)=>Number(d.total_gross).toFixed(2));
+            const invoiced = previousAmounts.reduce((sum,x)=>sum+Number(x),0);
+            return (
+              <div className={s.card} role="group" aria-label="Échéancier d'acomptes">
+                <h3>Échéancier d'acomptes</h3>
+                <p>Montant contractuel TTC : <strong>{total} €</strong> · acomptes déjà facturés : <strong>{invoiced.toFixed(2)} €</strong> · reste non facturé : <strong>{(base-invoiced).toFixed(2)} €</strong>.</p>
+                <p>Les pourcentages s'appliquent toujours au total initial du devis et non au montant restant. Les factures déjà émises sont prises en compte, indépendamment de leur paiement.</p>
+                <div className={s.actions}>
+                  {([{step:"first30",label:"Premier acompte · 30 %"},
+                     {step:"second30",label:"Deuxième acompte · 30 %"}] as const).map(({step,label})=>
+                    <button type="button" key={step} disabled={busy} onClick={safe(async()=>{
+                      const proposal=suggestDeposit(total,previousAmounts,step);
+                      setDepositAmount(proposal.proposalGross);
+                      setDepositMode("amount");
+                      setMessage(label+" : "+proposal.proposalGross+" € TTC proposés. Cliquez ensuite sur « Proposer les lignes depuis le devis » pour ventiler la TVA et relisez le résultat.");
+                    })}>{label}</button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
           <div className={s.actions}>
             {draft.kind === "facture" &&
               source &&
