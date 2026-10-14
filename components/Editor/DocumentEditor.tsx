@@ -198,6 +198,8 @@ export default function DocumentEditor({
     issuer: company?.databaseId ?? company?.name ?? "",
     pdfAccent,
   });
+  const pdfAccent = /^#[0-9a-fA-F]{6}$/.test(company?.color ?? "") ? company.color : "#295746";
+  const previewSignature = JSON.stringify({ draft, issuer: company?.databaseId ?? company?.name ?? "", pdfAccent });
   const amounts = totals(draft.lines),
     remaining = amounts.totalTTC - (Number(draft.acompte) || 0);
   const ttcConfirmed =
@@ -710,6 +712,7 @@ export default function DocumentEditor({
                 <span className={s.companyColorDot} style={{ backgroundColor: pdfAccent }} aria-hidden="true" />
                 <span>Couleur du PDF : <strong>{pdfAccent.toUpperCase()}</strong>. Titres, en-têtes et tableau du document.</span>
               </div>
+              <p className={s.helper}>Couleur du PDF : <strong style={{color:pdfAccent}}>{pdfAccent.toUpperCase()}</strong> ●</p>
               <p className={s.helper}>
                 {company.address} · {company.cityZip}
                 <br />
