@@ -3,6 +3,7 @@ import { requireAdminPage } from "@/lib/auth/require-admin";
 import Workspace, { type Section } from "@/components/Workspace/Workspace";
 const sections: Section[] = [
   "entreprises",
+  "espace",
   "clients",
   "devis",
   "factures",

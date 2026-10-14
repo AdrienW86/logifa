@@ -4,6 +4,7 @@ import { financialMetrics } from "@/lib/workspace/metrics";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   api,
   command,
@@ -20,6 +21,7 @@ import { MailSettings, SendDocument } from "./Mail";
 
 export type Section =
   | "dashboard"
+  | "espace"
   | "entreprises"
   | "clients"
   | "devis"
@@ -29,6 +31,7 @@ export type Section =
   | "parametres";
 const titles: Record<Section, string> = {
   dashboard: "Votre activité",
+  espace: "Espace entreprise",
   entreprises: "Entreprises émettrices",
   clients: "Carnet de clients",
   devis: "Vos devis",
@@ -50,6 +53,7 @@ const money = (minor: unknown) => {
 const textError = (error: unknown) =>
   error instanceof Error ? error.message : "Opération impossible.";
 export default function Workspace({ section }: { section: Section }) {
+  const router = useRouter();
   const { user } = useUser(),
     [data, setData] = useState<WorkspaceData | null>(null),
     [issuer, setIssuer] = useState(""),
@@ -334,28 +338,26 @@ export default function Workspace({ section }: { section: Section }) {
       <p>LOGIFA · Espace privé</p>
       <h1>{titles[section]}</h1>
 
-      <nav className={s.nav} aria-label="Gestion">
-        {(["dashboard", "clients", "devis", "factures", "entreprises", "parametres"] as const).map((key) => (
-          <Link key={key} href={key === "dashboard" ? "/" : `/gestion/${key}`} aria-current={section === key ? "page" : undefined}>
-            {titles[key]}
-          </Link>
-        ))}
-        <details className={s.more}>
-          <summary>Autres opérations</summary>
-          <div className={s.actions}>
-            <Link href="/gestion/paiements">Règlements et acomptes</Link>
-            <Link href="/gestion/documents">Archives et documents</Link>
+      {section === "entreprises" ? (
+        <nav className={s.leanNav} aria-label="Navigation principale">
+          <span>Mes entreprises</span>
+        </nav>
+      ) : (
+        <>
+          <div className={s.companyBar}>
+            <Link href="/gestion/entreprises">← Mes entreprises</Link>
+            <strong>{issuers.find((row) => value(row,"id") === issuer)?.commercial_name?.toString() || "Aucune entreprise ouverte"}</strong>
           </div>
-        </details>
-      </nav>
-      {section !== "entreprises" && (
-        <div className={s.actions}>
-          <Link href="/gestion/entreprises" className={s.settingTile}>
-            <strong>Entreprise : {issuers.find((row) => value(row, "id") === issuer)?.commercial_name?.toString() || "Aucune sélection"}</strong>
-            <span>Changer d’entreprise</span>
-          </Link>
-          <button disabled={busy} onClick={() => void load(issuer)}>Actualiser</button>
-        </div>
+          {issuer && (
+            <nav className={s.leanNav} aria-label="Navigation de l'entreprise">
+              {(["espace","clients","devis","factures","documents","parametres","paiements"] as const).map((key) => (
+                <Link key={key} href={`/gestion/${key}`} aria-current={section === key ? "page" : undefined}>
+                  {key === "espace" ? "Vue d’ensemble" : key === "documents" ? "Archives" : key === "parametres" ? "Modèles et réglages" : titles[key]}
+                </Link>
+              ))}
+            </nav>
+          )}
+        </>
       )}
       {error && (
         <p role="alert" className={s.notice}>
@@ -404,40 +406,6 @@ export default function Workspace({ section }: { section: Section }) {
             </div>
           )}
         </section>
-      )}
-      {section === "entreprises" && (
-        <>
-          <h2>Profils et identités juridiques</h2>
-          <p>
-            Les profils commerciaux restent distincts. Une entité juridique
-            commune partage ses séquences.
-          </p>
-          <div className={s.actions}>
-            <button disabled={!data || busy} onClick={() => open("issuer")}>
-              Nouvel émetteur
-            </button>
-            <button disabled={!data || busy} onClick={() => open("legal")}>
-              Nouvelle entité juridique
-            </button>
-          </div>
-          <details className={s.card} style={{marginTop:20}}>
-            <summary style={{cursor:"pointer",fontWeight:600}}>Identités juridiques · {entities.length} fiches — afficher et modifier</summary>
-            <p>Les profils commerciaux et leurs identités juridiques sont séparés pour préserver les numérotations et paramètres fiscaux.</p>
-          <div className={s.grid}>
-            {entities.map((entity) => (
-              <article className={s.card} key={value(entity, "id")}>
-                <h3>{value(entity, "legal_name")}</h3>
-                <p>
-                  {value(entity, "siret")} · {value(entity, "vat_regime")}
-                </p>
-                <button onClick={() => open("legal", entity)}>
-                  Modifier l’identité juridique
-                </button>
-              </article>
-            ))}
-          </div>
-          </details>
-        </>
       )}
       {data && section === "dashboard" && (
         <>
@@ -831,27 +799,42 @@ export default function Workspace({ section }: { section: Section }) {
           <div className={s.businessCards}>
             {businessRows.filter((row) => row.active !== false).map((row) => (
               <article className={s.card} key={value(row, "id")}>
-                <button className={s.enterpriseOpen} onClick={() => {if (user) selectIssuer(user.id,value(row,"id"));}}>
+                <button className={s.enterpriseOpen} onClick={() => {if (user) { selectIssuer(user.id,value(row,"id")); router.push("/gestion/espace"); }}}>
                   <span className={s.enterpriseSymbol}>{value(row,"commercial_name").slice(0,1).toUpperCase()}</span>
                   <strong>{value(row,"commercial_name")}</strong>
                   <small>{value(row,"city_zip") || value(row,"address") || "Coordonnées à compléter"}</small>
                   <span>Ouvrir l’espace entreprise →</span>
                 </button>
-                {issuer === row.id && (
-                  <div className={s.enterpriseTools}>
-                    <h3>Espace {value(row,"commercial_name")}</h3>
-                    <Link href="/gestion/clients">Clients</Link>
-                    <Link href="/gestion/devis">Devis</Link>
-                    <Link href="/gestion/factures">Factures</Link>
-                    <Link href="/gestion/documents">Importer un ancien devis ou une facture</Link>
-                    <Link href="/gestion/parametres">Modèles et paramètres</Link>
-                    <button onClick={() => open("issuer",row)}>Modifier l’entreprise</button>
-                    <button onClick={() => open("legal",entities.find((e) => e.id === row.legal_entity_id) ?? {})}>Identité juridique · SIRET et TVA</button>
-                  </div>
-                )}
               </article>
             ))}
           </div>
+        </section>
+      )}
+      {section === "espace" && (
+        <section className={s.businessArea}>
+          {!issuer ? (
+            <div className={s.card}>
+              <h2>Choisissez une entreprise</h2>
+              <p>Les clients et documents sont accessibles depuis son espace.</p>
+              <Link href="/gestion/entreprises">Voir mes entreprises →</Link>
+            </div>
+          ) : (
+            <>
+              <div className={s.businessHeadline}>
+                <div><h2>{issuers.find((row) => value(row,"id") === issuer)?.commercial_name?.toString() || "Entreprise"}</h2>
+                  <p>Clients, documents et informations de cette entreprise uniquement.</p></div>
+                <button onClick={() => open("issuer",issuers.find((row) => row.id === issuer) ?? {})}>Modifier l’entreprise</button>
+              </div>
+              <div className={s.companyHomeGrid}>
+                <Link href="/gestion/clients"><strong>Clients</strong><span>{clients.length} fiche(s) · Ajouter ou retrouver un client →</span></Link>
+                <Link href="/gestion/devis"><strong>Devis</strong><span>{quotes.length} document(s) · Créer et consulter →</span></Link>
+                <Link href="/gestion/factures"><strong>Factures</strong><span>{invoices.length} document(s) · Créer et consulter →</span></Link>
+                <Link href="/gestion/documents"><strong>Documents historiques</strong><span>Importer les anciens devis et factures →</span></Link>
+                <Link href="/gestion/parametres"><strong>Modèles et réglages</strong><span>Modèles PDF, e-mail et préférences →</span></Link>
+                <button type="button" onClick={() => open("legal",entities.find((row) => row.id === issuers.find((item) => item.id === issuer)?.legal_entity_id) ?? {})}><strong>Identité et TVA</strong><span>SIRET, numéro TVA et taux applicable →</span></button>
+              </div>
+            </>
+          )}
         </section>
       )}
       {chosenClient && section !== "clients" && (

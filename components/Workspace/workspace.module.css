@@ -219,3 +219,15 @@
 .enterpriseSymbol {width:48px;height:48px;display:grid;place-items:center;border-radius:12px;background:#e4f1e8;color:#185439;font-size:22px;font-weight:700;}
 .enterpriseTools {display:grid;gap:9px;border-top:1px solid #deebe1;margin-top:18px;padding-top:18px;}
 .enterpriseTools a,.enterpriseTools button {display:block;text-align:left;padding:11px 12px;border:1px solid #dce8e0;border-radius:9px;background:#f8faf8;color:#194532;font-weight:600;font-size:14px;}
+
+.leanNav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 0;margin-bottom:16px;border-bottom:1px solid #e5ece7;}
+.leanNav a,.leanNav span{display:inline-block;padding:9px 13px;border-radius:9px;text-decoration:none;color:#456255;font-size:14px;font-weight:600;}
+.leanNav a[aria-current="page"],.leanNav span{background:#e7f2eb;color:#164b35;}
+.companyBar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:10px 0;}
+.companyBar a{color:#47725c;text-decoration:none;font-size:13px;}
+.companyBar strong{font-size:16px;}
+.companyHomeGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;}
+.companyHomeGrid a,.companyHomeGrid button{display:grid;justify-items:start;gap:14px;padding:22px;border:1px solid #e1e9e3;border-radius:14px;background:#fff;text-align:left;text-decoration:none;color:#1b4331;box-shadow:0 4px 14px rgba(20,60,35,.035);}
+.companyHomeGrid strong{font-size:18px;}
+.companyHomeGrid span{color:#688071;font-size:13px;line-height:1.5;}
+.companyHomeGrid a:hover,.companyHomeGrid button:hover{border-color:#80ae92;background:#f8fcf9;}
