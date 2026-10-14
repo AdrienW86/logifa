@@ -560,6 +560,20 @@ export default function ServerDocument({
                 setPdfExtraction(null);
                 setMessage("Lignes reprises dans le brouillon. Complétez les valeurs manquantes et contrôlez les totaux avant la sauvegarde.");
               }}>Appliquer les lignes au brouillon</button>
+              <button type="button" disabled={busy || extracting} onClick={safe(async()=>{
+                if (!pdfExtraction) return;
+                const items = pdfExtraction.lines.filter((line)=>
+                  line.type==="normal" && line.quantity && line.price && Number(line.price)>0 &&
+                  line.tva && line.unit && line.evidence);
+                if (!items.length) throw new Error("Aucun tarif documenté et exploitable.");
+                if (!confirm(`Proposer ${items.length} tarif(s) provenant de ce PDF au catalogue privé de l'entreprise ? Ils resteront inactifs jusqu'à votre validation et ne seront pas considérés comme des tarifs actuels.`)) return;
+                const result = await api("/api/catalogue",{
+                  method:"POST",headers:{"Content-Type":"application/json"},
+                  body:JSON.stringify({confirmed:true,action:"suggest_from_quote",
+                    issuer,quote_id:source,items}),
+                });
+                setMessage(`${result.suggested ?? 0} tarif(s) proposé(s). Rendez-vous dans les réglages de l'entreprise pour valider ou archiver chaque suggestion avant utilisation par l'IA.`);
+              })}>Proposer les tarifs de ce PDF au catalogue (validation requise)</button>
             </div>
           )}
         </div>
