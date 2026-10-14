@@ -225,6 +225,11 @@ export default function Workspace({ section }: { section: Section }) {
         return;
       }
     }
+    if (form === "issuer") {
+      const rate = String(fd.get("company_vat_rate") ?? "");
+      if (!["", "0", "5.5", "10", "20"].includes(rate)) { setError("Taux de TVA invalide."); return; }
+      if (!String(fd.get("source_siret") ?? "").trim()) { setError("SIRET requis."); return; }
+    }
     payload.issuer_id = issuer;
     if (editing.id) payload.id = editing.id;
     payload.key = key;
@@ -254,6 +259,26 @@ export default function Workspace({ section }: { section: Section }) {
       return;
     setBusy(true);
     try {
+      if (form === "issuer") {
+        const associated = entities.find((entity) => entity.id === editing.legal_entity_id);
+        const fiscal: Row = {
+          issuer_id: issuer, key,
+          legal_name: String(fd.get("commercial_name") ?? "").trim(),
+          siret: String(fd.get("source_siret") ?? "").trim(),
+          vat_number: String(fd.get("company_vat_number") ?? "").trim(),
+          vat_regime: String(fd.get("company_vat_regime") ?? "unknown"),
+          vat_exigibility: value(associated ?? {}, "vat_exigibility") || "unknown",
+          default_vat_rate: String(fd.get("company_vat_rate") ?? ""),
+          reviewed: false,
+        };
+        if (associated?.id) fiscal.id = associated.id;
+        const result = await command("legal", fiscal, true);
+        if (typeof result.id !== "string" || !result.id) throw new Error("Identité fiscale non sauvegardée.");
+        payload.legal_entity_id = result.id;
+        delete payload.company_vat_regime;
+        delete payload.company_vat_rate;
+        delete payload.company_vat_number;
+      }
       await command(form ?? "", payload, true);
       setForm(null);
       setMessage("Enregistrement serveur confirmé.");
@@ -953,7 +978,24 @@ export default function Workspace({ section }: { section: Section }) {
               {field("phone", "Téléphone")}
               {field("email", "Email", "email")}
               {field("website", "Site Internet", "url")}
-              {field("source_siret", "SIRET du profil")}
+              {field("source_siret", "SIRET de l’entreprise", "text", true)}
+              <div className={s.wide}>
+                <h3>TVA de l’entreprise émettrice</h3>
+                <p>Enregistrée sur son identité juridique. Le taux effectif reste vérifié sur les lignes du devis ou de la facture.</p>
+              </div>
+              <label>Régime TVA
+                <select name="company_vat_regime" defaultValue={value(entities.find((entity) => entity.id === editing.legal_entity_id) ?? {}, "vat_regime") || "unknown"}>
+                  <option value="unknown">À préciser</option><option value="standard">TVA normale</option><option value="exempt">Franchise ou exonération</option><option value="reverse_charge">Autoliquidation</option>
+                </select>
+              </label>
+              <label>Taux de TVA habituel
+                <select name="company_vat_rate" defaultValue={value(entities.find((entity) => entity.id === editing.legal_entity_id) ?? {}, "default_vat_rate")}>
+                  <option value="">À préciser</option><option value="0">0 %</option><option value="5.5">5,5 %</option><option value="10">10 %</option><option value="20">20 %</option>
+                </select>
+              </label>
+              <label>Numéro de TVA intracommunautaire
+                <input name="company_vat_number" defaultValue={value(entities.find((entity) => entity.id === editing.legal_entity_id) ?? {}, "vat_number")} placeholder="FR…" />
+              </label>
               {field("color", "Couleur PDF", "color")}
               {field(
                 "logo_path",
