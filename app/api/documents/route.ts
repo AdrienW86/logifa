@@ -86,11 +86,14 @@ export async function POST(request: Request) {
       const table = kind === "quote" ? "quotes" : "invoices";
       const numberColumn = kind === "quote" ? "quote_number" : "invoice_number";
       const number = string("number").trim();
-      const duplicate = await db.from(table).select("*")
-        .eq("issuer_profile_id", issuer).eq(numberColumn, number).maybeSingle();
-      if (duplicate.error) throw new Error("Recherche du document historique impossible.");
-      if (duplicate.data) {
-        const row = duplicate.data;
+      const duplicates = await db.from(table).select("*")
+        .eq("issuer_profile_id", issuer).limit(500);
+      if (duplicates.error) throw new Error("Recherche du document historique impossible.");
+      const matches = (duplicates.data ?? []).filter((item) =>
+        typeof item[numberColumn] === "string" && item[numberColumn].trim() === number);
+      if (matches.length > 1) throw new Error("Plusieurs documents historiques portent ce numéro. Vérification manuelle nécessaire.");
+      if (matches.length === 1) {
+        const row = matches[0];
         const money = (v: unknown) => Number(v).toFixed(2);
         if (row.origin !== "historical" || row.client_id !== client ||
           String(row.issue_date).slice(0, 10) !== string("date") ||
