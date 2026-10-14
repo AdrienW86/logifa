@@ -189,6 +189,15 @@ export default function DocumentEditor({
   const company =
     issuers[Number(draft.companyKey.replace("local-issuer-", ""))] ??
     issuers[0];
+  // The selected issuer supplies the PDF accent; never use legacy hard-coded company colors.
+  const pdfAccent = /^#[0-9a-fA-F]{6}$/.test(company?.color ?? "")
+    ? company.color
+    : "#295746";
+  const previewSignature = JSON.stringify({
+    draft,
+    issuer: company?.databaseId ?? company?.name ?? "",
+    pdfAccent,
+  });
   const amounts = totals(draft.lines),
     remaining = amounts.totalTTC - (Number(draft.acompte) || 0);
   const ttcConfirmed =
@@ -453,7 +462,7 @@ export default function DocumentEditor({
         setPreview({
           url: URL.createObjectURL(pdf.blob),
           name: pdf.name,
-          base: JSON.stringify(draft),
+          base: previewSignature,
         });
       setStatus(
         download
@@ -476,7 +485,8 @@ export default function DocumentEditor({
         .includes(catalogSearch.toLocaleLowerCase()),
   );
   return (
-    <main className={s.workspace} data-logifa-editor>
+    <main className={s.workspace} data-logifa-editor
+      style={{ "--green": pdfAccent } as import("react").CSSProperties}>
       <aside className={s.rail}>
         <a className={s.brand} href="/">
           L<span>LOGIFA</span>
@@ -695,6 +705,10 @@ export default function DocumentEditor({
                       </button>
                     ),
                 )}
+              </div>
+              <div className={s.companyColorNote} aria-label="Couleur d'accent du PDF">
+                <span className={s.companyColorDot} style={{ backgroundColor: pdfAccent }} aria-hidden="true" />
+                <span>Couleur du PDF : <strong>{pdfAccent.toUpperCase()}</strong>. Titres, en-têtes et tableau du document.</span>
               </div>
               <p className={s.helper}>
                 {company.address} · {company.cityZip}
@@ -1263,7 +1277,7 @@ export default function DocumentEditor({
               {preview ? (
                 <>
                   <p className={s.helper}>
-                    {preview.base !== JSON.stringify(draft)
+                    {preview.base !== previewSignature
                       ? "La saisie a changé : actualisez cet aperçu avant de vous y fier."
                       : "Cet aperçu correspond à votre saisie."}{" "}
                     <a href={preview.url} target="_blank" rel="noreferrer">

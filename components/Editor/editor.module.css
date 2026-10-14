@@ -1198,3 +1198,28 @@
     font-size: 11px !important;
   }
 }
+
+/* The selected issuer's PDF accent is provided by the editor as --green. */
+.workspace .selectedCompany {
+  border-color: var(--green) !important;
+  box-shadow: inset 0 0 0 1px var(--green);
+  background: color-mix(in srgb, var(--green) 9%, white) !important;
+}
+.companyColorNote {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--green) 7%, white);
+  border: 1px solid color-mix(in srgb, var(--green) 25%, white);
+  border-radius: 8px;
+}
+.companyColorNote strong { color: var(--ink); }
+.companyColorDot {
+  flex: 0 0 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,.15);
+}
