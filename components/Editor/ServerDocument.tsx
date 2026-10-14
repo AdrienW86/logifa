@@ -12,6 +12,8 @@ import { isDraftShape, isRecord } from "@/lib/editor/contracts";
 import type { EditorDraft, Company } from "@/types/editor";
 import s from "../Workspace/workspace.module.css";
 import { depositProposal } from "@/lib/billing/deposit-proposal";
+import { lineTotals } from "@/lib/billing/validation";
+import { moneyMinor } from "@/lib/billing/money";
 import { suggestDeposit } from "@/lib/billing/deposit-schedule";
 import { documentInput } from "@/lib/workspace/input";
 import { SendDocument } from "../Workspace/Mail";
@@ -53,6 +55,7 @@ export default function ServerDocument({
     purchaseOrder: "",
     operationCategory: "",
   };
+  const [extractionQuoteId, setExtractionQuoteId] = useState("");
   const [pdfExtraction, setPdfExtraction] = useState<{
     lines: { type: "normal" | "title"; name: string; quantity: string; unit: string; price: string; tva: string; evidence: string }[];
     warnings: string[];
@@ -414,6 +417,7 @@ export default function ServerDocument({
       if (!Array.isArray(result.lines) || !Array.isArray(result.warnings) ||
         !isRecord(result.totals)) throw new Error("Extraction incompatible.");
       setPdfExtraction(result as unknown as NonNullable<typeof pdfExtraction>);
+      setExtractionQuoteId(quoteId);
       setMissingOriginal(false);
       setMessage("Prestations extraites. Vérifiez les prix, quantités, TVA et totaux avant de les appliquer.");
     } catch (error) {
@@ -991,25 +995,33 @@ export default function ServerDocument({
                       const detail = await api(
                         `/api/workspace?document=${source}&issuer=${issuer}&kind=quote`,
                       );
-                      if (
-                        !isRecord(detail.row) ||
-                        detail.row.client_id !== client ||
-                        !isRecord(detail.draft) ||
-                        !isDraftShape(detail.draft.payload)
-                      )
-                        throw new Error(
-                          "Source reeditable indisponible ou client different.",
-                        );
-                      const sourceDraft = detail.draft.payload;
+                      if (!isRecord(detail.row) || detail.row.client_id !== client)
+                        throw new Error("Le devis source n'appartient pas à ce client.");
+                      const hasEditor = isRecord(detail.draft) &&
+                        isDraftShape(detail.draft.payload);
+                      const extracted = pdfExtraction && extractionQuoteId === source
+                        ? pdfExtraction.lines : null;
+                      if (!hasEditor && !extracted)
+                        throw new Error("Ce devis a été importé en PDF. Extrayez d'abord ses prestations dans le panneau ci-dessus avant de calculer un acompte.");
+                      const fullLines = hasEditor
+                        ? (detail.draft as { payload: EditorDraft }).payload.lines
+                        : extracted!.map((line) => ({
+                            key: crypto.randomUUID(),type:line.type,name:line.name,
+                            quantity:line.quantity, unit:line.unit,
+                            price:line.price,tva:line.tva,
+                          }));
+                      const normalized = documentInput({
+                        issuer_profile_id: issuer,client_id: client,lines:fullLines,
+                      }).lines;
+                      if (!hasEditor) {
+                        const expected = moneyMinor(Number(detail.row.total_gross).toFixed(2));
+                        if (lineTotals(normalized).gross !== expected)
+                          throw new Error("Les lignes extraites ne correspondent pas au total TTC du devis. Vérifiez le PDF avant de calculer l'acompte.");
+                      }
                       const lines =
                         kind === "final"
-                          ? sourceDraft.lines
-                          : depositProposal(
-                              documentInput({
-                                issuer_profile_id: issuer,
-                                client_id: client,
-                                lines: sourceDraft.lines,
-                              }).lines,
+                          ? fullLines
+                          : depositProposal(normalized,
                               depositAmount.replace(",", "."),
                               depositMode,
                               value(detail.row, "quote_number"),
