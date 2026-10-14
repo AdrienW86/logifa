@@ -423,11 +423,22 @@ export default function ServerDocument({
               return null;
             return (
               <div role="group" aria-label="Compléter le PDF manquant" style={{marginBottom:16}}>
-                <p><strong>Le devis existe, mais aucun PDF original ou signé n'est encore associé.</strong>
-                  Choisissez le même PDF pour terminer l'import sans créer de doublon.</p>
-                <input type="file" accept="application/pdf,.pdf"
-                  aria-label="PDF original du devis historique"
-                  onChange={(event) => setPdfToAttach(event.target.files?.[0] ?? null)} />
+                <p><strong>Étape 1 — Ajouter le PDF original au devis déjà enregistré.</strong></p>
+                <p>Le devis et le client sont conservés. Sélectionnez son fichier PDF, puis validez son archivage. La simple sélection du fichier ne l'enregistre pas.</p>
+                <label style={{display:"grid",gap:8}}>
+                  Choisir le PDF du devis
+                  <input type="file" accept="application/pdf,.pdf"
+                    aria-label="PDF original du devis historique"
+                    disabled={attachingPdf || extracting}
+                    onChange={(event) => {
+                      setPdfToAttach(event.currentTarget.files?.[0] ?? null);
+                    }} />
+                </label>
+                <p role="status">
+                  {pdfToAttach
+                    ? "Fichier sélectionné : " + pdfToAttach.name + " — prêt à être associé."
+                    : "Aucun PDF sélectionné. Le bouton suivant sera disponible après le choix d'un fichier."}
+                </p>
                 <button type="button" disabled={!pdfToAttach || attachingPdf || extracting || busy}
                   onClick={async () => {
                     if (!pdfToAttach || !confirm(
@@ -466,17 +477,17 @@ export default function ServerDocument({
                       setAttachingPdf(false);
                     }
                   }}>
-                  {attachingPdf ? "Association et analyse en cours…" : "Associer le PDF et extraire les prestations"}
+                  {attachingPdf ? "Archivage et analyse en cours…" : "Étape 2 — Associer ce PDF et analyser le devis"}
                 </button>
               </div>
             );
           })()}
           <p>Extraction assistée depuis le PDF original archivé. Aucun tarif, taux de TVA ni quantité ne sera inventé. La facture restera en brouillon jusqu'à votre validation.</p>
+          {quoteFiles.some((row) => row.quote_id === source &&
+            (row.role === "original" || row.role === "signed")) && (
           <div className={s.actions}>
             <button type="button"
-              disabled={extracting || attachingPdf || busy || !issuer ||
-                (!missingOriginal && !quoteFiles.some((row) => row.quote_id === source &&
-                  (row.role === "original" || row.role === "signed")))}
+              disabled={extracting || attachingPdf || busy || !issuer}
               onClick={async () => {
                 if (!confirm("Analyser ce devis PDF avec OpenAI ? Le PDF sera transmis pour extraction. Aucun document n'est émis ni enregistré.")) return;
                 try { await extractQuotePdf(source); } catch { /* Message affiché par extractQuotePdf. */ }
@@ -484,6 +495,7 @@ export default function ServerDocument({
               {extracting ? "Analyse du PDF en cours…" : "Relancer l'extraction du PDF"}
             </button>
           </div>
+          )}
           {pdfExtraction && (
             <div>
               <h4>Prévisualisation — {pdfExtraction.lines.length} ligne(s)</h4>
