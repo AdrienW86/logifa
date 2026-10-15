@@ -146,6 +146,22 @@ export default function Workspace({ section }: { section: Section }) {
     payments = data?.lists.payments ?? [],
     issuers = knownIssuers,
     entities = data?.lists.legal_entities ?? [];
+  const selectedIssuerProfile = issuers.find((row) => row.id === issuer);
+  const selectedLegalEntity = entities.find(
+    (row) => row.id === selectedIssuerProfile?.legal_entity_id,
+  );
+  const fiscalMentions = isRecord(selectedLegalEntity?.legal_mentions)
+    ? selectedLegalEntity.legal_mentions : {};
+  const fiscalChecks = [
+    {label:"Dénomination juridique et SIRET",ok:Boolean(value(selectedLegalEntity ?? {}, "legal_name").trim() &&
+      value(selectedLegalEntity ?? {}, "siret").trim())},
+    {label:"Régime de TVA qualifié",ok:Boolean(value(selectedLegalEntity ?? {}, "vat_regime") &&
+      value(selectedLegalEntity ?? {}, "vat_regime") !== "unknown")},
+    {label:"Exigibilité TVA renseignée ou non applicable",ok:Boolean(value(selectedLegalEntity ?? {}, "vat_exigibility") &&
+      value(selectedLegalEntity ?? {}, "vat_exigibility") !== "unknown")},
+    {label:"Conditions de paiement",ok:Boolean(value(fiscalMentions,"payment_terms").trim())},
+    {label:"Mentions à faire figurer sur le PDF",ok:Boolean(value(fiscalMentions,"pdf_footer").trim())},
+  ];
   const testIssuers = issuers.filter((row) => /^RECETTE TECHNIQUE/i.test(value(row, "commercial_name")));
   const businessRows = issuers.filter((row) => !/^RECETTE TECHNIQUE/i.test(value(row, "commercial_name")));
   const metrics = financialMetrics(invoices, payments, data?.balances ?? {});
@@ -412,11 +428,35 @@ export default function Workspace({ section }: { section: Section }) {
           {settingsTab === "technical" && (
             <>
               <div className={s.settingsGrid}>
-                <Link className={s.settingTile} href="/gestion/entreprises"><strong>Entreprises et TVA</strong><span>Profils émetteurs, entités juridiques et paramètres fiscaux</span></Link>
+                <button type="button" className={s.settingTile}
+                  disabled={!selectedLegalEntity}
+                  onClick={() => selectedLegalEntity && open("legal", selectedLegalEntity)}>
+                  <strong>Vérifier l'identité fiscale</strong>
+                  <span>Régime et exigibilité TVA, conditions, mentions et validation →</span>
+                </button>
+                <Link className={s.settingTile} href="/gestion/entreprises"><strong>Entreprises et TVA</strong><span>Profils émetteurs et informations générales →</span></Link>
                 <div className={s.settingTile}><strong>Clés API et sécurité</strong><span>Les secrets sont gérés côté serveur dans les variables d’environnement, jamais affichés ici.</span></div>
                 <div className={s.settingTile}><strong>Connexion serveur</strong><span>{data ? "Données serveur disponibles" : "Connexion aux données non validée"}</span></div>
               </div>
-              {issuer && <InvoiceNumbering key={issuer} issuer={issuer} />}
+              {selectedLegalEntity && (
+                <section className={s.card} aria-label="Préparation de la validation fiscale">
+                  <h3>Informations fiscales à contrôler</h3>
+                  <p>{selectedLegalEntity.reviewed === true
+                    ? "Fiche fiscale relue et validée."
+                    : "Cette fiche fiscale n'est pas encore validée. Vérifiez les éléments ci-dessous avant de cocher « Informations fiscales relues »."
+                  }</p>
+                  <ul>{fiscalChecks.map((check)=>(
+                    <li key={check.label}>{check.ok ? "✓" : "À compléter :"} {check.label}</li>
+                  ))}</ul>
+                  <button type="button" disabled={!selectedLegalEntity}
+                    onClick={()=>open("legal",selectedLegalEntity)}>
+                    {selectedLegalEntity.reviewed === true
+                      ? "Consulter la fiscalité"
+                      : "Compléter et valider l'identité fiscale"}
+                  </button>
+                </section>
+              )}
+              {issuer && <InvoiceNumbering key={issuer + ":" + String(selectedLegalEntity?.reviewed ?? false)} issuer={issuer} />}
             </>
           )}
         </section>
@@ -1086,11 +1126,13 @@ export default function Workspace({ section }: { section: Section }) {
                 ["exempt", "Exonéré"],
                 ["reverse_charge", "Autoliquidation"],
               ])}
+              <p className={s.wide}>Pour une entreprise en franchise en base de TVA (article 293 B), choisissez « Non applicable » si ce régime est effectivement confirmé. Ne choisissez pas « Encaissements » ou « Débits » uniquement pour débloquer la validation.</p>
               {select("vat_exigibility", "Exigibilité", [
                 ["unknown", "À qualifier"],
                 ["cash", "Encaissements"],
                 ["debits", "Débits"],
                 ["delivery", "Livraison"],
+                ["not_applicable", "Non applicable (franchise ou exonération confirmée)"],
               ])}
               {field("default_vat_rate", "Taux TVA par défaut")}
               {field("vat_number", "Numéro TVA")}
@@ -1140,6 +1182,7 @@ export default function Workspace({ section }: { section: Section }) {
                   </label>
                 ),
               )}
+              <p className={s.wide}>Cochez uniquement après avoir vérifié que l'identité, le régime fiscal, les conditions de paiement et les mentions PDF correspondent à la situation réelle de l'entreprise.</p>
               <label>
                 <span>Informations fiscales relues</span>
                 <input
