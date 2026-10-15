@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api, value, type Row } from "@/lib/workspace/client";
 import s from "./workspace.module.css";
+import { nextCounterFromExternalInvoice } from "@/lib/billing/invoice-numbering";
 
 export default function InvoiceNumbering({issuer}:{issuer:string}) {
   const [status,setStatus]=useState<Row|null>(null);
@@ -21,6 +22,12 @@ export default function InvoiceNumbering({issuer}:{issuer:string}) {
     setEvidence("");setConfirmPhrase("");
     if(issuer)void load().catch(e=>setMessage(e instanceof Error?e.message:"Numérotation indisponible."));
   },[issuer]);
+  let nextCounter: number | null = null;
+  let referenceError = "";
+  if (lastNumber && lastDate) {
+    try {nextCounter=nextCounterFromExternalInvoice(lastNumber.trim(),lastDate);}
+    catch(error) {referenceError=error instanceof Error ? error.message : "Référence invalide.";}
+  }
   return (
     <section className={s.card} aria-label="Reprise de la numérotation des factures">
       <h2>Numérotation fiscale de l'entreprise</h2>
@@ -59,6 +66,11 @@ export default function InvoiceNumbering({issuer}:{issuer:string}) {
               <input value={lastDate} onChange={e=>setLastDate(e.target.value)}
                 type="date" required/>
             </label>
+            {lastNumber && lastDate && (
+              <p role="status">
+                {referenceError || "Référence cohérente avec la date : prochain compteur " + nextCounter + " (le numéro final dépendra de sa date d'émission)."}
+              </p>
+            )}
             <label>Justification de la série vérifiée (30 caractères minimum)
               <textarea rows={3} value={evidence} maxLength={2000} minLength={30}
                 onChange={e=>setEvidence(e.target.value)}
@@ -71,7 +83,7 @@ export default function InvoiceNumbering({issuer}:{issuer:string}) {
             </label>
             <button type="submit" disabled={loading ||
               confirmPhrase!=="JE CONFIRME LA SERIE" ||
-              evidence.trim().length<30 || !lastNumber || !lastDate}>
+              evidence.trim().length<30 || nextCounter===null}>
               {loading?"Vérification en cours…":"Valider la reprise de numérotation"}
             </button>
           </form>
