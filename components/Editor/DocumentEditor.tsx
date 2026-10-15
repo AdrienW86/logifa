@@ -156,10 +156,21 @@ export default function DocumentEditor({
   }, []);
   const [serverLocked, setServerLocked] = useState(false);
   const [invoiceReady, setInvoiceReady] = useState(false);
+  const [issueFeedback, setIssueFeedback] = useState<{
+    message: string; level: "info" | "error" | "success";
+  } | null>(null);
   const [serverDocument, setServerDocument] = useState<{
     id:string;issuer:string;kind:"quote"|"invoice";number:string;
   } | null>(null);
   const invoiceIssueRef = useRef<(() => Promise<void>) | null>(null);
+  const startInvoiceIssuance = () => {
+    if (!invoiceIssueRef.current) {
+      setIssueFeedback({message:"Connexion au service de facturation indisponible. Vérifiez le bloc « Cycle de vie et sauvegarde serveur ».",level:"error"});
+      return;
+    }
+    setIssueFeedback({message:"Vérification de la facture avant numérotation…",level:"info"});
+    void invoiceIssueRef.current();
+  };
   const [draft, setDraft] = useState<EditorDraft>(() => initialDraft(kind));
   const [status, setStatus] = useState(""),
     [errors, setErrors] = useState<string[]>([]),
@@ -566,13 +577,7 @@ export default function DocumentEditor({
             {kind === "facture" && storageIssuer ? (
               <>
                 <button type="button" disabled={!invoiceReady || serverLocked}
-                  onClick={() => {
-                    if (!invoiceIssueRef.current) {
-                      setStatus("Connexion au dossier de facturation en cours.");
-                      return;
-                    }
-                    void invoiceIssueRef.current();
-                  }}>
+                  onClick={startInvoiceIssuance}>
                   {serverLocked ? "Facture enregistrée" : "Enregistrer et numéroter"}
                 </button>
                 {!serverLocked && <button type="button" onClick={saveLocal}>
@@ -584,6 +589,27 @@ export default function DocumentEditor({
             </button>}
           </div>
         </header>
+        {kind === "facture" && issueFeedback && (
+          <div
+            role={issueFeedback.level === "error" ? "alert" : "status"}
+            aria-live={issueFeedback.level === "error" ? "assertive" : "polite"}
+            style={{padding:"14px 18px",border:"1px solid var(--green, currentColor)",borderRadius:10,margin:"12px 18px",display:"flex",gap:14,alignItems:"flex-start"}}
+          >
+            <div style={{flex:1}}>
+              <strong>{issueFeedback.level === "error" ? "Émission impossible pour le moment"
+                : issueFeedback.level === "success" ? "Facture enregistrée"
+                : "État de la numérotation"}</strong>
+              <p style={{margin:"5px 0 0"}}>{issueFeedback.message}</p>
+              {issueFeedback.level === "error" && !serverLocked && (
+                <button type="button" onClick={() =>
+                  document.getElementById("logifa-operation-fields")?.scrollIntoView({behavior:"smooth",block:"center"})
+                }>Vérifier les champs de la facture</button>
+              )}
+            </div>
+            <button type="button" aria-label="Masquer le message de numérotation"
+              onClick={() => setIssueFeedback(null)}>×</button>
+          </div>
+        )}
         <div className={s.heading}>
           <div>
             <p className={s.eyebrow}>VOTRE ATELIER DE DOCUMENTS</p>
@@ -645,6 +671,7 @@ export default function DocumentEditor({
           issueActionRef={invoiceIssueRef}
           onIssueAvailable={setInvoiceReady}
           onIssuedDocument={setServerDocument}
+          onIssueFeedback={(message, level) => setIssueFeedback({message,level})}
         />
         {!historicalQuoteId && (
         <PromptComposer
@@ -1450,7 +1477,7 @@ export default function DocumentEditor({
           </span>
           {kind === "facture" && storageIssuer && !serverLocked ? (
             <button type="button" disabled={!invoiceReady}
-              onClick={() => void invoiceIssueRef.current?.()}>
+              onClick={startInvoiceIssuance}>
               Enregistrer et numéroter la facture
             </button>
           ) : !serverLocked ? (
