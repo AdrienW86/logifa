@@ -1,6 +1,6 @@
 import type { Line } from '../../types/editor.ts';
 import type { DraftInput, EditorLine, HistoricalInput, PaymentInput } from '../../types/billing.ts';
-import { halfUp, MAX_MINOR, moneyMinor, positiveMinor, scaled } from './money.ts';
+import { signedHalfUp, signedMoneyMinor, MAX_MINOR, moneyMinor, positiveMinor, scaled } from './money.ts';
 
 export function uuid(value: string): string {
   if (typeof value !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(value)) throw new Error('UUID_REQUIRED');
@@ -18,9 +18,9 @@ export function text(value: string, maximum = 4000): string {
 export function exactLineTotals(quantityText: string, price: string, rateText: string) {
   const quantity = scaled(quantityText), rate = scaled(rateText);
   if (quantity <= 0n || quantity > 9999999999n || rate > 10000n) throw new Error('LINE_INVALID');
-  const net = halfUp(quantity * moneyMinor(price), 100n);
-  const vat = halfUp(net * rate, 10000n);
-  if (net + vat > MAX_MINOR) throw new Error('AMOUNT_LIMIT');
+  const net = signedHalfUp(quantity * signedMoneyMinor(price), 100n);
+  const vat = signedHalfUp(net * rate, 10000n);
+  if (net + vat > MAX_MINOR || net + vat < -MAX_MINOR) throw new Error('AMOUNT_LIMIT');
   return { net, vat, gross: net + vat };
 }
 export function lineTotals(lines: readonly (EditorLine | Line)[]) {
@@ -37,7 +37,9 @@ export function lineTotals(lines: readonly (EditorLine | Line)[]) {
     const key = rate.toString(), existing = breakdown.get(key) ?? { net: 0n, vat: 0n };
     breakdown.set(key, { net: existing.net + lineNet, vat: existing.vat + lineVat });
   }
-  if (net + vat > MAX_MINOR) throw new Error('AMOUNT_LIMIT');
+  if (net + vat > MAX_MINOR || net + vat < -MAX_MINOR) throw new Error('AMOUNT_LIMIT');
+  for (const amount of breakdown.values())
+    if (amount.net < 0n || amount.vat < 0n) throw new Error('LOGIFA_DISCOUNT_EXCEEDS_RATE_BASE');
   return { net, vat, gross: net + vat, breakdown };
 }
 export function validateDraft(input: DraftInput): DraftInput {

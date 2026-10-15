@@ -249,8 +249,8 @@ Calculs d'aperçu et montants des lignes PDF locaux alignés sur les arrondis se
 
 Validation : 41 tests unitaires/SQL, recette Chromium mobile étendue au choix d'une affectation de remboursement, TypeScript, lint, build. `npm audit --omit=dev` exécuté : zéro vulnérabilité signalée. Aucun remboursement ni émission réelle effectué. La réaffectation d'un règlement sans remboursement n'est pas encore ajoutée.
 
-## Remises en attente et recette complète
+## Remises appliquées et recette complète
 
-La [migration des remises](remises-migration-en-attente.md) est publiée pour revue, mais **non appliquée** à Supabase : accord explicite demandé après refus de la revue automatique. Les adaptations applicatives correspondantes restent locales et ne sont pas livrées en production.
+La [migration des remises](remises-migration-en-attente.md) a été appliquée à Supabase après accord explicite, version `20261015213039`. Les adaptations applicatives permettent les remises explicites, calculées au centime et plafonnées par taux de TVA. Les documents émis restent verrouillés.
 
 La [procédure de recette complète](recette-complete-2026-10-15.md) décrit le parcours, les preuves disponibles et les travaux restants. L'accueil masque désormais les entreprises désactivées ; contrôle Chromium effectué sur données synthétiques.

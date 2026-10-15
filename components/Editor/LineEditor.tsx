@@ -117,10 +117,9 @@ export default memo(function LineEditor({
             </select>
           </label>
           <label>
-            PU HT (€) *
+            PU HT (€), négatif pour une remise *
             <input
               type="number"
-              min="0"
               step="any"
               inputMode="decimal"
               value={l.price}

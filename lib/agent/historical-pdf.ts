@@ -1,3 +1,4 @@
+import { exactLineTotals } from "../billing/validation.ts";
 export type HistoricalPdfLine = {
   type: "normal" | "title";
   name: string;
@@ -46,10 +47,10 @@ export const historicalPdfSchema = {
   },
 } as const;
 
-function decimal(raw: unknown): string {
+function decimal(raw: unknown, signed = false): string {
   if (typeof raw !== "string") return "";
   const v = raw.trim().replace(/[\s\u00a0\u202f]/g, "").replace(",", ".");
-  return /^\d+(?:\.\d{1,2})?$/.test(v) ? v : "";
+  return (signed ? /^-?\d+(?:\.\d{1,2})?$/ : /^\d+(?:\.\d{1,2})?$/).test(v) ? v : "";
 }
 function unit(raw: unknown): string {
   if (typeof raw !== "string") return "";
@@ -88,7 +89,7 @@ export function validatedHistoricalPdf(
       continue;
     }
     const quantity = decimal(item.quantity);
-    const price = decimal(item.price);
+    const price = decimal(item.price, true);
     const tva = decimal(item.vat_rate);
     const u = unit(item.unit);
     if (!quantity || Number(quantity) <= 0 || !price || !tva || Number(tva) > 100 || !u)
@@ -110,10 +111,12 @@ export function validatedHistoricalPdf(
   }
   const complete = lines.filter((line) =>
     line.type === "normal" && line.quantity && line.price && line.tva && line.unit);
-  const subtotal = complete.reduce((sum, l) =>
-    sum + Math.round(Number(l.quantity) * Number(l.price) * 100), 0);
-  if (totals.net && complete.length === lines.filter((l) => l.type === "normal").length &&
-    Math.abs(subtotal - Number(totals.net) * 100) > 3)
+  const subtotal = complete.reduce((sum, line) => {
+    try {return sum + exactLineTotals(line.quantity,line.price,line.tva).net;}
+    catch {warnings.push("Montants extraits hors limites : vérification obligatoire.");return sum;}
+  },0n);
+  if (totals.net && complete.length === lines.filter((line) => line.type === "normal").length &&
+    Math.abs(Number(subtotal) - Number(totals.net) * 100) > 3)
     warnings.push("La somme des lignes extraites ne correspond pas au total HT du devis : vérifiez les prix et quantités.");
   return { lines, warnings: [...new Set(warnings)].slice(0, 90), totals };
 }

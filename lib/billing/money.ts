@@ -26,3 +26,11 @@ export function decimal(minor: bigint): string {
   if (minor < 0n) throw new Error('NEGATIVE_AMOUNT');
   return `${minor / 100n}.${(minor % 100n).toString().padStart(2, '0')}`;
 }
+
+export function signedMoneyMinor(value: string): bigint {
+  if (typeof value !== 'string') throw new Error('DECIMAL_REQUIRED');
+  return value.startsWith('-') ? -moneyMinor(value.slice(1)) : moneyMinor(value);
+}
+export function signedHalfUp(numerator: bigint, denominator: bigint): bigint {
+  return numerator < 0n ? -halfUp(-numerator,denominator) : halfUp(numerator,denominator);
+}

@@ -114,7 +114,7 @@ export function documentErrors(d: EditorDraft, companies: Company[]): string[] {
       (l.type === "normal" &&
         (!validNumber(l.quantity) ||
           Number(l.quantity) <= 0 ||
-          !validNumber(l.price) ||
+          !validNumber(l.price.startsWith("-") ? l.price.slice(1) : l.price) ||
           !validNumber(l.tva) ||
           Number(l.tva) > 100 ||
           typeof l.unit !== "string" ||
@@ -357,7 +357,7 @@ export function prepareProposal(
         l.type === "normal" &&
         ((l.quantity !== "" &&
           (!validNumber(l.quantity) || Number(l.quantity) <= 0)) ||
-          (l.price !== "" && !validNumber(l.price)) ||
+          (l.price !== "" && !validNumber(l.price.startsWith("-") ? l.price.slice(1) : l.price)) ||
           (l.tva !== "" && (!validNumber(l.tva) || Number(l.tva) > 100)) ||
           (l.unit !== "" && !units.includes(l.unit)))
       )

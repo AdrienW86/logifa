@@ -1,8 +1,8 @@
-# Remises explicites — migration en attente d'accord
+# Remises explicites — migration appliquée
 
-Fichier à relire : `supabase/migrations/20261015154816_logifa_explicit_discount_lines.sql`.
+Fichier à relire : `supabase/migrations/20261015213039_logifa_explicit_discount_lines.sql`.
 
-La revue automatique a refusé l'application en production : elle demande une autorisation explicite pour remplacer la fonction financière `logifa_private.api_save_document(text, uuid, jsonb)`. La question d'autorisation est en attente. **Cette migration n'a pas été appliquée à Supabase.** Sa publication dans Git ne l'applique pas : les workflows du dépôt n'exécutent aucune migration distante.
+Migration appliquée le 15 octobre 2026 après accord explicite de l’utilisateur. Supabase l’enregistre sous la version `20261015213039`. Le catalogue confirme la garde des remises et celle des documents en préparation ; les privilèges restent fermés à `anon` et accessibles à `authenticated`, avec contrôle administrateur dans la fonction. Aucun document fiscal, paiement ou e-mail de test n’a été créé en production.
 
 Delta préparé à partir de la définition réellement lue en production :
 
@@ -12,6 +12,6 @@ Delta préparé à partir de la définition réellement lue en production :
 - Conserver la garde administrateur, les contrôles d'entreprise/client, les références de devis/chantier, les contraintes et le verrouillage des documents déjà émis.
 - Ne modifier aucune ligne financière existante, aucun numéro et aucune séquence. Aucun paiement, e-mail ou document fiscal n'est émis par ce SQL.
 
-La recette SQL isolée vérifie les remises de même taux, les refus d'un taux sans base et les remises excessives, puis rejoue acomptes/finale/paiements/avoirs. Les adaptations d'éditeur et d'extraction PDF sont préparées localement ; leur livraison reste suspendue à l'accord et à la vérification de la migration. La version applicative publiée continue de refuser les prix négatifs.
+La recette SQL isolée vérifie les remises de même taux, les refus d’un taux sans base et les remises excessives, puis rejoue acomptes/finale/paiements/avoirs. Les adaptations de l’éditeur et de l’extraction PDF accompagnent cette livraison : prix négatifs explicites, arrondis signés au centime et contrôle de chaque taux de TVA.
 
-Avant application : relire le delta et revérifier que la définition de production n'a pas changé. Après application : vérifier le catalogue et les privilèges, sans utiliser de fausse facture en production. La validation métier des remises et des mentions fiscales reste nécessaire.
+La vérification de production porte sur le catalogue et les privilèges, sans fausse facture. La validation métier des remises et des mentions fiscales reste nécessaire.
