@@ -1119,12 +1119,14 @@ export default function ServerDocument({
                 }
                 if (!confirm(`Associer ${deposits.length} facture(s) d'acompte à cette finale ? Les montants déductibles et la TVA seront contrôlés par le serveur avant émission.`))
                   return;
-                for (const deposit of deposits) {
-                  await command("link-deposit",{
-                    issuer_id:issuer,final_id:id,deposit_id:deposit.id,
-                  },true);
-                }
-                setMessage(`${deposits.length} acompte(s) associé(s) à la facture finale. Les déductions seront vérifiées lors de l'émission.`);
+                const linked = await command("link-all-deposits",{
+                  issuer_id: issuer, final_id: id,
+                },true);
+                const count=Number(linked.linked_count);
+                if (!Number.isInteger(count) || count<0)
+                  throw new Error("Résultat de rattachement invalide.");
+                setMessage(count+" acomptes associés dans une seule opération contrôlée par le serveur.");
+
               })}>Associer tous les acomptes déjà facturés à la finale</button>
             )}
             {draft.kind === "facture" && kind === "final" && id && !locked && (
