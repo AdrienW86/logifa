@@ -22,7 +22,7 @@ import {
 } from "@/lib/workspace/http";
 import { isDraftShape, isRecord } from "@/lib/editor/contracts";
 import { databaseForAdmin } from "@/lib/supabase/server";
-import { persistenceError } from "@/lib/services/billing";
+import { checkedRpc, persistenceError } from "@/lib/services/billing";
 import { validateMaster } from "@/lib/workspace/master-validation";
 import { isoDate } from "@/lib/billing/validation";
 import { recoverPendingArchives } from "@/lib/services/archive";
@@ -216,6 +216,14 @@ export async function POST(request: Request) {
           optionalId(data, "allocation_id") ?? null,
         ),
       );
+    }
+    if (action === "link-all-deposits") {
+      await scopedRecord("invoices", id(data,"final_id"), issuer);
+      return privateJson(await checkedRpc(await databaseForAdmin(),
+        "logifa_link_all_deposits", {
+          p_issuer: issuer,
+          p_final: id(data,"final_id"),
+        }));
     }
     if (action === "link-deposit") {
       await scopedRecord("invoices", id(data, "final_id"), issuer);
