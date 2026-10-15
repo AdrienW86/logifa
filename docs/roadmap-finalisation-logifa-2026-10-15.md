@@ -1,6 +1,30 @@
 # LOGIFA — Plan complet de finalisation
 _Date : 15 octobre 2026. Document de pilotage ; non équivalent à une mise en production validée._
 
+## Journal de livraison — suite du 15 octobre 2026
+
+**État constaté** : corrections poussées directement sur `master`. Les derniers commits ont passé le job GitHub Actions `validate` et le build Vercel `Ready`. Cela ne constitue **pas** une recette complète en situation réelle avec envoi fiscal.
+
+| Périmètre | État vérifié | Reste à valider |
+| --- | --- | --- |
+| Acomptes successifs 30 % / 30 % / solde | Moteur déterministe en centimes, montant et pourcentage libres, propositions dans l'éditeur | Scénarios comptables/TVA multiples et vrais PDF émis |
+| Rattachement à une facture finale | RPC transactionnelle `logifa_link_all_deposits` et bouton final lié à l'entreprise/devis/chantier | Recette avec deux acomptes réellement émis |
+| Affichage et performance des soldes | RPC `logifa_invoice_balances` en une requête sécurisée par émetteur | Mesure de latence avec grand volume et pagination serveur |
+| Reprise de numérotation | Journal privé de réconciliation, endpoint admin et écran de confirmation, contrôles de référence `D-AAAAMJJ-XXXX` | Réconciliation **effective** de la série Couverture Catalane et vérification des archives |
+| Devis historiques signés | Action de vérification humaine de l'accord et contrôle du PDF, audit privé, lien vers le moteur de facturation | Vérification sur un vrai document et pièce d'accord adaptée |
+| PDF factures | Pagination des mentions et récapitulatifs d'acompte sans ajout systématique d'une page | Recette visuelle PDF 1–3 pages, remise, décimales, TVA et acquittement |
+| Mail | Branchements d'envoi et transfert chiffré déjà présents | Essai d'envoi réellement reçu et contrôle d'expéditeur |
+| Tarifs IA | Préparation de suggestions de tarifs par émetteur et validation manuelle existantes | Corpus approuvé, évaluations métier, cas de remises négatives |
+
+**Mesures de prudence** : dans Supabase production, le verrou `invoice_numbering_hold` de Couverture Catalane demeure actif ; aucune facture réelle n'a été émise, aucun règlement n'a été fabriqué, aucune ancienne référence n'a été renumérotée et aucun mail client n'a été envoyé par ces travaux. Les comptes e-mail anciens ont été préservés.
+
+**Exigences réglementaires de référence** :
+- [Mentions obligatoires sur une facture, Entreprendre Service Public (vérifié août 2026)](https://entreprendre.service-public.gouv.fr/vosdroits/F31808), notamment date de versement d'acompte, numéro unique et continu, taux TVA, remises, échéance et mentions de pénalités.
+- [Devis et acceptation, Entreprendre Service Public](https://entreprendre.service-public.gouv.fr/vosdroits/F31144) : ne pas inférer l'accord du client d'un statut importé.
+- [BOFiP TVA services et encaissement des acomptes](https://bofip.impots.gouv.fr/bofip/283-PGP.html) : distinguer facture d'acompte, TVA exigible et paiement réellement encaissé.
+
+**Étapes prioritaires suivantes** : recette réelle d'acompte n°1/n°2/finale, remises négatives sans distortion des totaux, mentions fiscales et archivage automatique sûr, traitement des paiements et version acquittée, envoi Resend de test, agent de devis V2 et grilles tarifaires.
+
 ## Objectif produit
 Logifa est réservé à un seul administrateur. Chaque entreprise est un **émetteur juridiquement distinct**, possédant son carnet, ses devis, factures, règlements, archives, paramètres fiscaux, modèles, couleurs, clés d'envoi et catalogues tarifaires. Aucun compte client. Interface enterprise-first, mobile et PWA, sans exposition de données entre émetteurs.
 
