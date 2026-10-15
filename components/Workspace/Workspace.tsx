@@ -245,6 +245,21 @@ export default function Workspace({ section }: { section: Section }) {
         "insurance_label",
       ])
         delete payload[key];
+      if (payload.reviewed === true) {
+        const mentions = isRecord(payload.legal_mentions) ? payload.legal_mentions : {};
+        if (!String(payload.siret ?? "").trim() ||
+            !["standard","exempt","reverse_charge"].includes(String(payload.vat_regime ?? "")) ||
+            !["cash","debits","delivery","not_applicable"].includes(String(payload.vat_exigibility ?? "")) ||
+            !String(mentions.payment_terms ?? "").trim() ||
+            !String(mentions.pdf_footer ?? "").trim()) {
+          setError("Validation fiscale incomplète : vérifiez le SIRET, le régime de TVA, son exigibilité (ou non-applicabilité), les conditions de paiement et les mentions du PDF.");
+          return;
+        }
+        if (payload.vat_exigibility === "not_applicable" && payload.vat_regime !== "exempt") {
+          setError("L'exigibilité « Non applicable » ne peut être choisie que pour une franchise ou exonération confirmée.");
+          return;
+        }
+      }
     }
     if (form === "client") {
       try {
