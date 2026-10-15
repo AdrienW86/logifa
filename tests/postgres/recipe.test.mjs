@@ -57,6 +57,22 @@ test('isolated PostgreSQL financial workflow',async t=>{
    await assert.rejects(rpc(db,'logifa_invoice_balance',[standalone.id]),/ADMIN_REQUIRED/);
    await claims(db,'user_test_admin');
  });
+ await t.test('explicit discounts reduce the same VAT category and cannot create a negative base',async()=>{
+   const lines=[{type:'normal',name:'Travaux',quantity:'1',unit:'forfait',price:'100',tva:'20'},
+     {type:'normal',name:'Remise attestée',quantity:'1',unit:'forfait',price:'-10',tva:'20'}];
+   const discounted=await draft(db,c,'classic','100',{lines});
+   await issue(db,discounted.id);
+   const balance=await rpc(db,'logifa_invoice_balance',[discounted.id]);assert.equal(balance.gross_minor,10800);
+   await assert.rejects(draft(db,c,'classic','100',{lines:[lines[0],{...lines[1],tva:'10'}]}),/DISCOUNT_EXCEEDS_RATE_BASE/);
+   await assert.rejects(draft(db,c,'classic','100',{lines:[lines[0],{...lines[1],price:'-101'}]}),/DISCOUNT_EXCEEDS_RATE_BASE/);
+ });
+ await t.test('historical import preserves number and declared status without assuming payment, retries are idempotent',async()=>{
+   const input={issuer_profile_id:c.issuer,client_id:c.client,number:'HISTORIQUE-TEST',issue_date:'2026-10-01',original_status:'payée selon PDF à vérifier',import_key:randomUUID(),total_net:'100',total_vat:'20',total_gross:'120'};
+   const original=await rpc(db,'logifa_import_document',['invoice',input]);
+   assert.equal((await rpc(db,'logifa_import_document',['invoice',input])).id,original.id);
+   const balance=await rpc(db,'logifa_invoice_balance',[original.id]);assert.equal(balance.paid_minor,0);assert.equal(balance.is_acquittable,false);
+   await assert.rejects(rpc(db,'logifa_import_document',['invoice',{...input,total_net:'101',total_gross:'121'}]),/IDEMPOTENCY_CONFLICT/);
+ });
  await t.test('persistent shared IA quotas block the eleventh call and refuse non-admins',async()=>{
    for(let i=0;i<10;i++) {
      const quota=await rpc(db,'logifa_consume_agent_request',[i%2?'proposal':'pdf_extraction']);

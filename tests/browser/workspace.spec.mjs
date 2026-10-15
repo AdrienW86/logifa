@@ -32,7 +32,7 @@ test('workspace paginates beyond 50 and discards old-company data immediately',a
    const p=Number(url.searchParams.get('page'));const matching=url.searchParams.get('client')?records.filter(row=>row.id===url.searchParams.get('client')):records;const different=url.searchParams.get('issuer')!==issuer;
    return route.fulfill({json:{items:different?[]:matching.slice(p*50,(p+1)*50),clients:[],balances:{},total:different?0:matching.length}});
   }
-  return route.fulfill({json:{available:true,lists:{issuer_profiles:[company],legal_entities:[],clients:records.slice(0,50),projects:[],quotes:[],invoices:[],payments:[payment],document_files:[],document_workflow:[],document_events:[]},balances:{},truncated:[]}});
+  return route.fulfill({json:{available:true,lists:{issuer_profiles:[company,{id:"00000000-0000-4000-8000-000000000999",commercial_name:"Entreprise archivée",active:false}],legal_entities:[],clients:records.slice(0,50),projects:[],quotes:[],invoices:[],payments:[payment],document_files:[],document_workflow:[],document_events:[]},balances:{},truncated:[]}});
  });
  await page.goto(`http://127.0.0.1:${server.address().port}`);
  await page.getByRole('status').filter({hasText:'51 résultat'}).waitFor();
@@ -52,6 +52,9 @@ test('workspace paginates beyond 50 and discards old-company data immediately',a
  assert.equal(await page.locator('input[name="allocation_id"]').count(),0);
  await page.getByLabel('Facture dont le règlement doit être réduit').selectOption('00000000-0000-4000-8000-000000000300');
  assert.equal(await page.locator('input[name="refund_ready"]').inputValue(),'true');
+ await page.goto(`http://127.0.0.1:${server.address().port}/?section=entreprises`);
+ await page.getByText('Entreprise synthétique',{exact:true}).waitFor();
+ assert.equal(await page.getByText('Entreprise archivée',{exact:true}).count(),0);
  assert.deepEqual(errors,[]);
  }finally{await browser?.close();if(server)await new Promise(resolve=>server.close(resolve));await rm(dir,{recursive:true,force:true});}
 });

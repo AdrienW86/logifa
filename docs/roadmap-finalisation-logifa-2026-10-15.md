@@ -248,3 +248,9 @@ Validation : 35 tests unitaires et SQL, une recette Chromium mobile avec 51 clie
 Calculs d'aperçu et montants des lignes PDF locaux alignés sur les arrondis serveur par ligne, en centimes BigInt. L'émission teste la génération PDF avant allocation du numéro et archive côté serveur ; une erreur Storage conserve le numéro émis et retourne un état de récupération explicite. Le remboursement propose les factures et leurs affectations nettes, sans saisie d'identifiant technique ; il reste une opération humaine confirmée et contrôlée par le moteur existant.
 
 Validation : 41 tests unitaires/SQL, recette Chromium mobile étendue au choix d'une affectation de remboursement, TypeScript, lint, build. `npm audit --omit=dev` exécuté : zéro vulnérabilité signalée. Aucun remboursement ni émission réelle effectué. La réaffectation d'un règlement sans remboursement n'est pas encore ajoutée.
+
+## Remises en attente et recette complète
+
+La [migration des remises](remises-migration-en-attente.md) est publiée pour revue, mais **non appliquée** à Supabase : accord explicite demandé après refus de la revue automatique. Les adaptations applicatives correspondantes restent locales et ne sont pas livrées en production.
+
+La [procédure de recette complète](recette-complete-2026-10-15.md) décrit le parcours, les preuves disponibles et les travaux restants. L'accueil masque désormais les entreprises désactivées ; contrôle Chromium effectué sur données synthétiques.

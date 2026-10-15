@@ -195,7 +195,7 @@ export default function Workspace({ section }: { section: Section }) {
     {label:"Mentions à faire figurer sur le PDF",ok:Boolean(value(fiscalMentions,"pdf_footer").trim())},
   ];
   const testIssuers = issuers.filter((row) => /^RECETTE TECHNIQUE/i.test(value(row, "commercial_name")));
-  const businessRows = issuers.filter((row) => !/^RECETTE TECHNIQUE/i.test(value(row, "commercial_name")));
+  const businessRows = issuers.filter((row) => row.active !== false && !/^RECETTE TECHNIQUE/i.test(value(row, "commercial_name")));
   const metrics = financialMetrics(invoices, payments, data?.balances ?? {});
   const chosenClient = clients.find((row) => row.id === clientFilter) ??
     (section === "clients" ? pageRows.find((row) => row.id === clientFilter) : undefined);
