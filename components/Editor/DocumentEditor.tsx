@@ -155,6 +155,8 @@ export default function DocumentEditor({
     };
   }, []);
   const [serverLocked, setServerLocked] = useState(false);
+  const [invoiceReady, setInvoiceReady] = useState(false);
+  const invoiceIssueRef = useRef<(() => Promise<void>) | null>(null);
   const [draft, setDraft] = useState<EditorDraft>(() => initialDraft(kind));
   const [status, setStatus] = useState(""),
     [errors, setErrors] = useState<string[]>([]),
@@ -514,9 +516,25 @@ export default function DocumentEditor({
             <span className={s.badge}>
               {changed ? "Modifications en cours" : "Saisie inchangée"}
             </span>
-            <button type="button" onClick={saveLocal}>
-              Sauvegarder <kbd>⌘ / Ctrl S</kbd>
-            </button>
+            {kind === "facture" && storageIssuer ? (
+              <>
+                <button type="button" disabled={!invoiceReady || serverLocked}
+                  onClick={() => {
+                    if (!invoiceIssueRef.current) {
+                      setStatus("Connexion au dossier de facturation en cours.");
+                      return;
+                    }
+                    void invoiceIssueRef.current();
+                  }}>
+                  {serverLocked ? "Facture enregistrée" : "Enregistrer et numéroter"}
+                </button>
+                {!serverLocked && <button type="button" onClick={saveLocal}>
+                  Conserver ma saisie <kbd>⌘ / Ctrl S</kbd>
+                </button>}
+              </>
+            ) : <button type="button" disabled={serverLocked} onClick={saveLocal}>
+              Conserver ma saisie <kbd>⌘ / Ctrl S</kbd>
+            </button>}
           </div>
         </header>
         <div className={s.heading}>
@@ -534,7 +552,9 @@ export default function DocumentEditor({
           </div>
           <div className={s.documentTag}>
             {kind === "devis" ? "DEVIS" : "FACTURE"}
-            <span>Brouillon · non émis</span>
+            <span>{serverLocked && draft.reference && draft.reference !== "BROUILLON"
+              ? "N° " + draft.reference + " · émis"
+              : "En préparation · numéro attribué lors de l'émission"}</span>
           </div>
         </div>
         {available && (
@@ -575,6 +595,8 @@ export default function DocumentEditor({
             }));
           }}
           onLock={setServerLocked}
+          issueActionRef={invoiceIssueRef}
+          onIssueAvailable={setInvoiceReady}
         />
         {!historicalQuoteId && (
         <PromptComposer
@@ -802,10 +824,14 @@ export default function DocumentEditor({
               <div className={s.grid}>
                 <label>
                   Référence du {kind} *
-                  <input
-                    value={draft.reference}
-                    onChange={(e) => patch({ reference: e.target.value })}
-                  />
+                  {kind === "facture" ? (
+                    <input value={serverLocked && draft.reference !== "BROUILLON"
+                      ? draft.reference : "Automatique à l'émission"}
+                      readOnly aria-label="Numéro fiscal automatique" />
+                  ) : (
+                    <input value={draft.reference}
+                      onChange={(e) => patch({ reference: e.target.value })} />
+                  )}
                 </label>
                 <label>
                   Date du document *
@@ -817,8 +843,8 @@ export default function DocumentEditor({
                 </label>
               </div>
               <p className={s.helper}>
-                Le numéro définitif sera attribué côté serveur. Un export local
-                ne constitue pas une facture émise.
+                {serverLocked ? "Numéro définitif enregistré par Logifa. Le document émis est verrouillé." :
+                  "Le numéro fiscal sera attribué automatiquement quand tu cliqueras sur « Enregistrer et numéroter ». Le raccourci Ctrl + S conserve uniquement la saisie en préparation."}
               </p>
             </section>
             <section id="prestations" className={s.section}>
@@ -1372,9 +1398,16 @@ export default function DocumentEditor({
             {status ||
               "Tous les champs restent modifiables. Les champs * sont requis pour le PDF."}
           </span>
-          <button type="button" onClick={saveLocal}>
-            Sauvegarder
-          </button>
+          {kind === "facture" && storageIssuer && !serverLocked ? (
+            <button type="button" disabled={!invoiceReady}
+              onClick={() => void invoiceIssueRef.current?.()}>
+              Enregistrer et numéroter la facture
+            </button>
+          ) : !serverLocked ? (
+            <button type="button" onClick={saveLocal}>Conserver la saisie</button>
+          ) : (
+            <strong>Document émis : {draft.reference}</strong>
+          )}
         </footer>
       </div>
       {catalogOpen && (

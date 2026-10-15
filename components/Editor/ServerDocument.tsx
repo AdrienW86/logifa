@@ -24,12 +24,16 @@ export default function ServerDocument({
   onLoad,
   onCompany,
   onLock,
+  issueActionRef,
+  onIssueAvailable,
 }: {
   draft: EditorDraft;
   userId?: string;
   onLoad: (draft: EditorDraft, saved?: boolean) => void;
   onCompany: (company: Company) => void;
   onLock: (locked: boolean) => void;
+  issueActionRef?: { current: (() => Promise<void>) | null };
+  onIssueAvailable?: (available: boolean) => void;
 }) {
   const [issuer, setIssuer] = useState(""),
     [clients, setClients] = useState<Row[]>([]),
@@ -68,6 +72,8 @@ export default function ServerDocument({
   const [attachingPdf, setAttachingPdf] = useState(false);
   const [missingOriginal, setMissingOriginal] = useState(false);
   const [savedVersion, setSavedVersion] = useState("");
+  const [numberingHold, setNumberingHold] = useState("");
+  const [numberingNext, setNumberingNext] = useState<number | null>(null);
   const [clientKind, setClientKind] = useState("");
   const [clientSearch, setClientSearch] = useState("");
   const [manualDepositText, setManualDepositText] = useState("");
@@ -129,6 +135,21 @@ export default function ServerDocument({
         setSourceQuotes(workspace.lists.quotes);
 
         setAvailable(true);
+        if (documentKind === "invoice") {
+          try {
+            const numbering = await api("/api/numbering?issuer=" +
+              encodeURIComponent(issuerId));
+            if (!alive) return;
+            setNumberingHold(numbering.on_hold === true
+              ? value(numbering, "hold_reason") || "Numérotation à réconcilier."
+              : "");
+            setNumberingNext(typeof numbering.next_value === "number"
+              ? numbering.next_value : null);
+          } catch {
+            if (!alive) return;
+            setNumberingHold("État de la numérotation indisponible. Vérifiez les paramètres fiscaux.");
+          }
+        }
         if (documentKind === "invoice" && query.get("fromQuote")) {
           const quoted = workspace.lists.quotes.find((row) =>
             row.id === query.get("fromQuote") && row.issuer_profile_id === issuerId);
@@ -302,6 +323,11 @@ export default function ServerDocument({
       throw new Error("Choisissez une entreprise et un client avant d'enregistrer la facture.");
     if (!fiscal.operationDate || !fiscal.dueDate || !fiscal.operationCategory)
       throw new Error("Renseignez la date de prestation (ou d'acompte), l'échéance et la nature des opérations.");
+    if (numberingHold) {
+      setMessage("Numéro indisponible : " + numberingHold +
+        ". Dans Couverture Catalane → Modèles et réglages → Connexions et fiscalité, validez la reprise de la série avant l'émission. La facture peut rester en préparation.");
+      return;
+    }
     if (!confirm("ENREGISTRER ET ÉMETTRE DÉFINITIVEMENT cette facture ? Un numéro fiscal sera attribué. La facture ne pourra plus être modifiée librement. L'envoi au client reste séparé."))
       return;
     const savedId = await persistPreparation();
@@ -323,7 +349,8 @@ export default function ServerDocument({
     if (!number) throw new Error("Émission enregistrée mais numéro non renvoyé : rechargez le document avant toute nouvelle action.");
     setLocked(true);
     onLock(true);
-    onLoad({...draft,reference:number});
+    onLoad({...draft,reference:number}, true);
+    setNumberingNext((previous) => previous===null ? null : previous+1);
     setMessage("Facture "+number+" émise et verrouillée. Archivage PDF en cours…");
     try {
       await api(`/api/invoices/${savedId}/pdf?issuer=${issuer}&confirmed=1`, {method:"POST"});
@@ -333,6 +360,14 @@ export default function ServerDocument({
         (error instanceof Error ? error.message : "Erreur archivage"));
     }
   };
+  useEffect(() => {
+    if (!issueActionRef) return;
+    issueActionRef.current = safe(issueWithNumber);
+    return () => { issueActionRef.current = null; };
+  });
+  useEffect(() => {
+    onIssueAvailable?.(available && !!issuer && !locked && documentKind === "invoice");
+  }, [available, issuer, locked, documentKind, onIssueAvailable]);
   const createClient = async () => {
     if (clientKind !== "individual" && clientKind !== "professional")
       throw new Error(
