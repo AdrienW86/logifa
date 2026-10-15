@@ -77,8 +77,7 @@ function sectionAmount(lines: Line[], index: number) {
   return totals(lines.slice(index + 1, next < 0 ? lines.length : next)).totalHT;
 }
 type PdfResult = { blob: Blob; name: string };
-// The generators stay byte-for-byte intact. Only pdf.save is captured, using
-// exactly the same document, so preview and download share the actual PDF.
+// Capture pdf.save so preview and download use the same generator and rounded line amounts.
 export async function renderOriginalPdf(
   d: EditorDraft,
   issuers: import("../../types/editor").Company[] = companies,

@@ -242,3 +242,9 @@ Validation exécutée : **33 tests**, lint de correction/sécurité JavaScript-T
 Clients, devis, factures et règlements : pages de 50, ordre stable date/id, recherche serveur, filtre client et filtre d'émetteur systématique. Les soldes sont récupérés pour les seules factures de la page. Les réponses tardives sont abandonnées ; le changement d'entreprise efface immédiatement les anciennes listes. Une fiche client hors du chargement initial reste consultable.
 
 Validation : 35 tests unitaires et SQL, une recette Chromium mobile avec 51 clients synthétiques (page 2, ouverture d'une fiche absente du chargement initial, changement d'entreprise, aucune erreur JavaScript), TypeScript, lint et build. Le navigateur simule Clerk et les API ; il ne prouve pas l'intégration distante. CI inclut désormais cette recette. Le chargement de référence initial et les indicateurs restent plafonnés à 500, signalés comme partiels : optimisation complémentaire nécessaire pour très gros volumes. Recherche des documents par numéro et des règlements par référence bancaire.
+
+## Lot arrondis, émission et remboursement
+
+Calculs d'aperçu et montants des lignes PDF locaux alignés sur les arrondis serveur par ligne, en centimes BigInt. L'émission teste la génération PDF avant allocation du numéro et archive côté serveur ; une erreur Storage conserve le numéro émis et retourne un état de récupération explicite. Le remboursement propose les factures et leurs affectations nettes, sans saisie d'identifiant technique ; il reste une opération humaine confirmée et contrôlée par le moteur existant.
+
+Validation : 41 tests unitaires/SQL, recette Chromium mobile étendue au choix d'une affectation de remboursement, TypeScript, lint, build. `npm audit --omit=dev` exécuté : zéro vulnérabilité signalée. Aucun remboursement ni émission réelle effectué. La réaffectation d'un règlement sans remboursement n'est pas encore ajoutée.

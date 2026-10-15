@@ -1,3 +1,4 @@
+import type { Line } from '../../types/editor.ts';
 import type { DraftInput, EditorLine, HistoricalInput, PaymentInput } from '../../types/billing.ts';
 import { halfUp, MAX_MINOR, moneyMinor, positiveMinor, scaled } from './money.ts';
 
@@ -14,7 +15,15 @@ export function text(value: string, maximum = 4000): string {
   if (typeof value !== 'string' || !value.trim() || value.length > maximum || value.includes('\0')) throw new Error('TEXT_REQUIRED');
   return value;
 }
-export function lineTotals(lines: EditorLine[]) {
+export function exactLineTotals(quantityText: string, price: string, rateText: string) {
+  const quantity = scaled(quantityText), rate = scaled(rateText);
+  if (quantity <= 0n || quantity > 9999999999n || rate > 10000n) throw new Error('LINE_INVALID');
+  const net = halfUp(quantity * moneyMinor(price), 100n);
+  const vat = halfUp(net * rate, 10000n);
+  if (net + vat > MAX_MINOR) throw new Error('AMOUNT_LIMIT');
+  return { net, vat, gross: net + vat };
+}
+export function lineTotals(lines: readonly (EditorLine | Line)[]) {
   if (!Array.isArray(lines) || lines.length > 1000) throw new Error('LINES_REQUIRED');
   let net = 0n, vat = 0n;
   const breakdown = new Map<string, { net: bigint; vat: bigint }>();
@@ -22,10 +31,8 @@ export function lineTotals(lines: EditorLine[]) {
     text(line.name);
     if (line.type === 'title') continue;
     if (line.type !== 'normal' || !['m²','ml','unité','forfait','m³'].includes(line.unit)) throw new Error('LINE_INVALID');
-    const quantity = scaled(line.quantity), rate = scaled(line.tva);
-    if (quantity <= 0n || quantity > 9999999999n || rate > 10000n) throw new Error('LINE_INVALID');
-    const lineNet = halfUp(quantity * moneyMinor(line.price), 100n);
-    const lineVat = halfUp(lineNet * rate, 10000n);
+    const rate = scaled(line.tva);
+    const { net: lineNet, vat: lineVat } = exactLineTotals(line.quantity, line.price, line.tva);
     net += lineNet; vat += lineVat;
     const key = rate.toString(), existing = breakdown.get(key) ?? { net: 0n, vat: 0n };
     breakdown.set(key, { net: existing.net + lineNet, vat: existing.vat + lineVat });

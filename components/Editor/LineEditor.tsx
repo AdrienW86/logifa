@@ -1,6 +1,7 @@
 "use client";
 import { memo } from "react";
 import type { Line } from "../../lib/editor/model";
+import { totals } from "../../lib/editor/model";
 import { units } from "../../lib/editor/model";
 import s from "./editor.module.css";
 const money = (n: number) =>
@@ -141,7 +142,7 @@ export default memo(function LineEditor({
           <div className={s.lineTotal}>
             <span>Montant HT</span>
             <strong>
-              {money((Number(l.quantity) || 0) * (Number(l.price) || 0))}
+              {money(totals([l]).totalHT)}
             </strong>
           </div>
         </div>

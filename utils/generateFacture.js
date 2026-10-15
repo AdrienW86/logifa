@@ -119,7 +119,7 @@ export const generateFacture = ({
       `${p.quantity} ${p.unit}`,
       `${p.price.toFixed(2)} €`,
       `${p.tva}%`,
-      `${(p.price * p.quantity).toFixed(2)} €`
+      `${(p.totalNet ?? p.price * p.quantity).toFixed(2)} €`
     ];
   });
 

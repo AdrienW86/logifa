@@ -21,6 +21,7 @@ import { MailSettings, SendDocument } from "./Mail";
 import TariffCatalogue from "./TariffCatalogue";
 import InvoiceNumbering from "./InvoiceNumbering";
 import { pageKinds } from "../../lib/workspace/pagination";
+import PaymentChoice from "./PaymentChoice";
 import LegalDetails from "./LegalDetails";
 import { legalDetails } from "../../lib/workspace/legal-form";
 
@@ -240,6 +241,10 @@ export default function Workspace({ section }: { section: Section }) {
       payload: Row = {};
     for (const [name, v] of fd)
       if (typeof v === "string" && v !== "") payload[name] = v;
+    if (form === "refund") {
+      if (fd.get("refund_ready") !== "true") {setError("Attendez le chargement des affectations avant de confirmer le remboursement.");return;}
+      delete payload.refund_ready;
+    }
     if (form === "legal") {
       payload.reviewed = fd.get("reviewed") === "on";
       Object.assign(payload, legalDetails(fd, editing));
@@ -1277,16 +1282,7 @@ export default function Workspace({ section }: { section: Section }) {
           )}
           {["allocate", "refund"].includes(form) && (
             <>
-              {select(
-                "payment_id",
-                "Règlement encaissé",
-                payments
-                  .filter((row) => row.direction === "incoming")
-                  .map((row) => [
-                    value(row, "id"),
-                    `${value(row, "received_on")} · ${money(row.amount_minor)} · ${label(row.client_id)}`,
-                  ]),
-              )}
+              <PaymentChoice issuer={issuer} refund={form === "refund"} payments={payments.filter(row=>row.direction==="incoming").map(row=>({id:value(row,"id"),label:`${value(row,"received_on")} · ${money(row.amount_minor)} · ${label(row.client_id)}`}))} />
               {field("amount", "Montant (€)", "text", true)}
               {form === "allocate" ? (
                 select(
@@ -1307,10 +1303,7 @@ export default function Workspace({ section }: { section: Section }) {
                 <>
                   {field("date", "Date du remboursement", "date", true)}
                   {field("method", "Moyen", "text", true)}
-                  {field(
-                    "allocation_id",
-                    "ID de l’affectation à annuler si le règlement était affecté",
-                  )}
+
                 </>
               )}
             </>

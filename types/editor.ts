@@ -44,6 +44,7 @@ export type PdfLine =
       quantity: number;
       unit: string;
       price: number;
+      totalNet?: number;
       tva: number;
     };
 export interface PdfPayload {

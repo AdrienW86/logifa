@@ -1,3 +1,4 @@
+import { issueAndArchive } from "@/lib/services/issuance";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import {
   workspaceRead,
@@ -164,7 +165,7 @@ export async function POST(request: Request) {
       )
         throw new Error("LOGIFA_FISCAL_PDF_CONFIGURATION_REQUIRED");
       return privateJson(
-        await billingService.issue(kind, id(data, "id"), field(data, "date")),
+        await issueAndArchive(kind, id(data, "id"), issuer, field(data, "date")),
       );
     }
     if (action === "payment") {

@@ -1,3 +1,4 @@
+import { exactLineTotals, lineTotals } from "../billing/validation.ts";
 import { isDraftShape, isProposalShape } from "./contracts.ts";
 import type {
   DocumentKind,
@@ -72,28 +73,22 @@ export function initialDraft(kind: DocumentKind): EditorDraft {
 }
 const validNumber = (v: string) =>
   typeof v === "string" &&
-  /^\d+(\.\d+)?$/.test(v) &&
+  /^\d+(\.\d{1,2})?$/.test(v) &&
   Number.isFinite(Number(v));
 const validDate = (v: string) =>
   /^\d{4}-\d{2}-\d{2}$/.test(v) &&
   Number.isFinite(Date.parse(v)) &&
   new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v;
 export function totals(lines: Line[]) {
-  const normal = lines.filter((l) => l.type !== "title");
-  const totalHT = normal.reduce(
-    (n, l) => n + (Number(l.price) || 0) * (Number(l.quantity) || 0),
-    0,
-  );
-  const totalTVA = normal.reduce(
-    (n, l) =>
-      n +
-      ((Number(l.price) || 0) *
-        (Number(l.quantity) || 0) *
-        (Number(l.tva) || 0)) /
-        100,
-    0,
-  );
-  return { totalHT, totalTVA, totalTTC: totalHT + totalTVA };
+  let net = 0n, vat = 0n;
+  for (const line of lines) {
+    if (line.type === 'title') continue;
+    try {
+      const amount = exactLineTotals(line.quantity, line.price, line.tva);
+      net += amount.net; vat += amount.vat;
+    } catch { /* Incomplete input contributes no invented amount; validation blocks issuance. */ }
+  }
+  return { totalHT: Number(net) / 100, totalTVA: Number(vat) / 100, totalTTC: Number(net + vat) / 100 };
 }
 export function documentErrors(d: EditorDraft, companies: Company[]): string[] {
   const errors: string[] = [];
@@ -129,6 +124,8 @@ export function documentErrors(d: EditorDraft, companies: Company[]): string[] {
         `Poste ${i + 1} : complétez la description, la quantité, le prix et la TVA (0 à 100 %).`,
       );
   });
+  try { lineTotals(d.lines); }
+  catch { errors.push("Vérifiez les montants : deux décimales maximum, unités autorisées et limites financières."); }
   if (d.showAcompte && !validNumber(d.acompte))
     errors.push("Le montant de l’acompte doit être positif ou nul.");
   if (d.isPaid)
@@ -154,6 +151,7 @@ export function pdfPayload(d: EditorDraft, companies: Company[]): PdfPayload {
             quantity: Number(l.quantity),
             unit: l.unit,
             price: Number(l.price),
+            totalNet: Number(exactLineTotals(l.quantity,l.price,l.tva).net) / 100,
             tva: Number(l.tva),
           },
     ),
