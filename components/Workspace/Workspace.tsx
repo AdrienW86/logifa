@@ -19,6 +19,7 @@ import { companies } from "@/app/company";
 import s from "./workspace.module.css";
 import { MailSettings, SendDocument } from "./Mail";
 import TariffCatalogue from "./TariffCatalogue";
+import InvoiceNumbering from "./InvoiceNumbering";
 
 export type Section =
   | "dashboard"
@@ -409,11 +410,14 @@ export default function Workspace({ section }: { section: Section }) {
           {settingsTab === "tariffs" && <TariffCatalogue key={issuer} issuer={issuer} />}
           {settingsTab === "mail" && <MailSettings key={issuer} issuer={issuer} />}
           {settingsTab === "technical" && (
-            <div className={s.settingsGrid}>
-              <Link className={s.settingTile} href="/gestion/entreprises"><strong>Entreprises et TVA</strong><span>Profils émetteurs, entités juridiques et paramètres fiscaux</span></Link>
-              <div className={s.settingTile}><strong>Clés API et sécurité</strong><span>Les secrets sont gérés côté serveur dans les variables d’environnement, jamais affichés ici.</span></div>
-              <div className={s.settingTile}><strong>Connexion serveur</strong><span>{data ? "Données serveur disponibles" : "Connexion aux données non validée"}</span></div>
-            </div>
+            <>
+              <div className={s.settingsGrid}>
+                <Link className={s.settingTile} href="/gestion/entreprises"><strong>Entreprises et TVA</strong><span>Profils émetteurs, entités juridiques et paramètres fiscaux</span></Link>
+                <div className={s.settingTile}><strong>Clés API et sécurité</strong><span>Les secrets sont gérés côté serveur dans les variables d’environnement, jamais affichés ici.</span></div>
+                <div className={s.settingTile}><strong>Connexion serveur</strong><span>{data ? "Données serveur disponibles" : "Connexion aux données non validée"}</span></div>
+              </div>
+              {issuer && <InvoiceNumbering key={issuer} issuer={issuer} />}
+            </>
           )}
         </section>
       )}
