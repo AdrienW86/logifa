@@ -29,3 +29,7 @@ jobs:
         run: npm test
       - name: Production build (without production credentials)
         run: npm run build
+      - name: Chromium for isolated interface recipe
+        run: npx playwright install --with-deps chromium
+      - name: Browser interface recipe (synthetic data)
+        run: npm run test:browser

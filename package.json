@@ -19,7 +19,8 @@
     "test:auth": "node --experimental-strip-types --test tests/auth/*.test.mjs",
     "test:email": "node --experimental-strip-types --test tests/email/*.test.mjs",
     "test:agent": "node --experimental-strip-types --test tests/agent/*.test.mjs",
-    "test:postgres": "node --test tests/postgres/recipe.test.mjs"
+    "test:postgres": "node --test tests/postgres/recipe.test.mjs",
+    "test:browser": "node --test tests/browser/*.spec.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "7.9.14",

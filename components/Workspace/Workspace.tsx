@@ -20,6 +20,7 @@ import s from "./workspace.module.css";
 import { MailSettings, SendDocument } from "./Mail";
 import TariffCatalogue from "./TariffCatalogue";
 import InvoiceNumbering from "./InvoiceNumbering";
+import { pageKinds } from "../../lib/workspace/pagination";
 import LegalDetails from "./LegalDetails";
 import { legalDetails } from "../../lib/workspace/legal-form";
 
@@ -75,6 +76,31 @@ export default function Workspace({ section }: { section: Section }) {
   const formRef = useRef<HTMLFormElement | null>(null);
   const [knownIssuers, setKnownIssuers] = useState<Row[]>([]);
   const [settingsTab, setSettingsTab] = useState<"documents" | "tariffs" | "mail" | "technical">("documents");
+  const [page, setPage] = useState(0);
+  const [pageRows, setPageRows] = useState<Row[]>([]);
+  const [pageClients, setPageClients] = useState<Row[]>([]);
+  const [pageBalances, setPageBalances] = useState<Record<string, Row>>({});
+  const [pageTotal, setPageTotal] = useState(0);
+  const [listBusy, setListBusy] = useState(false);
+  const paginated = Object.hasOwn(pageKinds, section);
+  useEffect(() => {
+    if (!paginated || !issuer || !data) return;
+    let alive = true;
+    setListBusy(true); setPageRows([]); setPageBalances({});
+    const timer = window.setTimeout(async () => {
+      try {
+        const query = new URLSearchParams({issuer,section,page:String(page),search,client:clientFilter});
+        const result = await api('/api/workspace/list?' + query);
+        if (!alive) return;
+        if (!Array.isArray(result.items) || !result.items.every(isRecord) || !isRecord(result.balances) ||
+            !Array.isArray(result.clients) || !result.clients.every(isRecord) || typeof result.total !== 'number') throw new Error('Liste incompatible.');
+        setPageRows(result.items); setPageClients(result.clients); setPageTotal(result.total);
+        setPageBalances(Object.fromEntries(Object.entries(result.balances).filter((entry): entry is [string, Row] => isRecord(entry[1]))));
+      } catch (error) {if(alive) setError(textError(error));}
+      finally {if(alive) setListBusy(false);}
+    }, 250);
+    return () => {alive = false; window.clearTimeout(timer);};
+  }, [paginated,issuer,section,page,search,clientFilter,data]);
   const loadSequence = useRef(0);
   const load = useCallback(async (id: string) => {
     if (activeIssuer.current !== id) return;
@@ -102,9 +128,12 @@ export default function Workspace({ section }: { section: Section }) {
       const changed = activeIssuer.current !== id;
       activeIssuer.current = id;
       setIssuer(id);
+      setPage(0);
       setSearch("");
       setClientFilter("");
-      if (changed) setForm(null);
+      if (changed) {
+        setForm(null); setData(null); setPageRows([]); setPageClients([]); setPageBalances({}); setPageTotal(0);
+      }
       void load(id);
     };
     sync();
@@ -167,17 +196,18 @@ export default function Workspace({ section }: { section: Section }) {
   const testIssuers = issuers.filter((row) => /^RECETTE TECHNIQUE/i.test(value(row, "commercial_name")));
   const businessRows = issuers.filter((row) => !/^RECETTE TECHNIQUE/i.test(value(row, "commercial_name")));
   const metrics = financialMetrics(invoices, payments, data?.balances ?? {});
-  const chosenClient = clients.find((row) => row.id === clientFilter);
+  const chosenClient = clients.find((row) => row.id === clientFilter) ??
+    (section === "clients" ? pageRows.find((row) => row.id === clientFilter) : undefined);
   const clientMetrics = financialMetrics(
     invoices.filter((row) => row.client_id === clientFilter),
     payments.filter((row) => row.client_id === clientFilter),
     data?.balances ?? {},
   );
   const label = (id: unknown) =>
-    clients.find((c) => c.id === id)?.company_name ?? "Client non renseigné";
+    [...pageClients, ...clients].find((c) => c.id === id)?.company_name ?? "Client non renseigné";
   const docLink = (row: Row, kind: "quote" | "invoice") =>
     `/${kind === "quote" ? "devis" : "facture"}?document=${value(row, "id")}&issuer=${issuer}`;
-  const rows =
+  const rows = paginated && issuer ? pageRows :
     section === "clients"
       ? clients
       : section === "devis"
@@ -192,7 +222,7 @@ export default function Workspace({ section }: { section: Section }) {
   const workflows = data?.lists.document_workflow ?? [];
   const workflow = (row: Row) =>
     workflows.find((w) => w.quote_id === row.id || w.invoice_id === row.id);
-  const visible = rows.filter(
+  const visible = paginated && issuer ? rows : rows.filter(
     (row) =>
       (!clientFilter ||
         row.client_id === clientFilter ||
@@ -499,12 +529,17 @@ export default function Workspace({ section }: { section: Section }) {
           section,
         ) && (
           <>
+            {paginated && issuer && <nav className={s.actions} aria-label="Pagination">
+              <button disabled={listBusy || page === 0} onClick={() => setPage(current => Math.max(0,current-1))}>Précédent</button>
+              <span role="status">{listBusy ? 'Chargement…' : `${pageTotal} résultat(s) · page ${page+1} / ${Math.max(1,Math.ceil(pageTotal/50))}`}</span>
+              <button disabled={listBusy || (page+1)*50 >= pageTotal} onClick={() => setPage(current => current+1)}>Suivant</button>
+            </nav>}
             <div className={s.actions} style={{ marginTop: 20 }}>
               <input
                 aria-label="Rechercher dans les données"
-                placeholder="Rechercher"
+                placeholder={section === "clients" ? "Rechercher un nom" : section === "paiements" ? "Rechercher une référence bancaire" : "Rechercher un numéro"}
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {setPage(0); setSearch(e.target.value);}}
               />
               {section !== "clients" && clients.length > 0 && (
                 <div className={s.clientChooser}>
@@ -517,12 +552,12 @@ export default function Workspace({ section }: { section: Section }) {
                     autoComplete="off"
                   />
                   <div className={s.clientChoices}>
-                    <button type="button" aria-pressed={!clientFilter} onClick={() => setClientFilter("")}>Tous les clients</button>
+                    <button type="button" aria-pressed={!clientFilter} onClick={() => {setPage(0);setClientFilter("");}}>Tous les clients</button>
                     {clients
                       .filter((row) => [value(row, "company_name"), value(row, "contact_email"), value(row, "phone")].join(" ").toLocaleLowerCase("fr").includes(clientQuickSearch.toLocaleLowerCase("fr")))
                       .slice(0, 12)
                       .map((row) => (
-                        <button type="button" key={value(row, "id")} aria-pressed={clientFilter === row.id} onClick={() => setClientFilter(value(row, "id"))}>
+                        <button type="button" key={value(row, "id")} aria-pressed={clientFilter === row.id} onClick={() => {setPage(0);setClientFilter(value(row, "id"));}}>
                           {value(row, "company_name")}
                         </button>
                       ))}
@@ -594,7 +629,7 @@ export default function Workspace({ section }: { section: Section }) {
               <section className={s.clientArea} aria-label="Carnet de clients">
                 {chosenClient ? (
                   <div className={s.clientDetail}>
-                    <button type="button" onClick={() => setClientFilter("")}>← Tous les clients</button>
+                    <button type="button" onClick={() => {setPage(0);setClientFilter("");}}>← Tous les clients</button>
                     <div className={s.detailHeader}>
                       <div>
                         <p>Fiche client</p>
@@ -627,10 +662,10 @@ export default function Workspace({ section }: { section: Section }) {
                   </div>
                 ) : (
                   <div className={s.clientList}>
-                    <p>{visible.length} client(s) dans cet émetteur. Sélectionnez une fiche pour ses devis et factures.</p>
+                    <p>{pageTotal} client(s) dans cet émetteur. Sélectionnez une fiche pour ses devis et factures.</p>
                     {visible.map((row) => (
                       <article className={s.clientRow} key={value(row, "id")}>
-                        <button type="button" className={s.clientOpen} onClick={() => {setClientFilter(value(row, "id"));setSearch("");}}>
+                        <button type="button" className={s.clientOpen} onClick={() => {setPage(0);setClientFilter(value(row, "id"));setSearch("");}}>
                           <strong>{value(row, "company_name")}</strong>
                           <span>{value(row, "contact_email") || value(row, "phone") || "Coordonnées à compléter"}</span>
                           <span>{row.archived_at ? "Archivé" : "Actif"} · {quotes.filter((q) => q.client_id === row.id).length} devis · {invoices.filter((i) => i.client_id === row.id).length} factures</span>
@@ -679,14 +714,14 @@ export default function Workspace({ section }: { section: Section }) {
                         {section === "paiements" &&
                           ` · ${money(row.amount_minor)}`}
                         {section === "factures" &&
-                          data.balances[value(row, "id")] && (
+                          (pageBalances[value(row, "id")] ?? data.balances[value(row, "id")]) && (
                             <p>
                               Reste :{" "}
                               {money(
-                                data.balances[value(row, "id")].remaining_minor,
+                                (pageBalances[value(row, "id")] ?? data.balances[value(row, "id")]).remaining_minor,
                               )}{" "}
                               ·{" "}
-                              {data.balances[value(row, "id")]
+                              {(pageBalances[value(row, "id")] ?? data.balances[value(row, "id")])
                                 .is_acquittable === true
                                 ? "Acquittement autorisé"
                                 : "Acquittement non autorisé"}
@@ -715,7 +750,7 @@ export default function Workspace({ section }: { section: Section }) {
                                 />
                               )}
                               {section === "factures" && row.lifecycle === "issued" &&
-                                data.balances[value(row, "id")]?.is_acquittable === true && (
+                                (pageBalances[value(row, "id")] ?? data.balances[value(row, "id")])?.is_acquittable === true && (
                                 <a
                                   href={`/api/invoices/${value(row, "id")}/pdf?issuer=${encodeURIComponent(issuer)}&paid=1`}
                                   target="_blank"
