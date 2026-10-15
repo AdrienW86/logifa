@@ -735,6 +735,30 @@ export default function Workspace({ section }: { section: Section }) {
                               Créer une facture
                             </Link>
                           )}
+                          {section === "devis" &&
+                            row.lifecycle === "historical" &&
+                            row.status === "sent" && (
+                            <button type="button" disabled={busy} onClick={async()=>{
+                              const evidence=window.prompt(
+                                "Indiquez la preuve de l'accord client pour ce devis historique (date, document signé ou échange vérifié). La mention « signé » ne suffit pas sans vérification.",
+                              );
+                              if (!evidence?.trim())return;
+                              if (!window.confirm("Confirmer que l'accord du client a réellement été vérifié sur le document archivé ? Cette validation autorisera les factures liées à ce devis ; elle n'émettra aucune facture."))
+                                return;
+                              setBusy(true);
+                              setError("");
+                              try {
+                                await api("/api/quotes/accept-historical",{
+                                  method:"POST",headers:{"Content-Type":"application/json"},
+                                  body:JSON.stringify({issuer,quote_id:value(row,"id"),
+                                    evidence,confirmed:true}),
+                                });
+                                setMessage("Accord client documenté. Le devis historique peut maintenant servir de base à une facture après les autres contrôles.");
+                                await load(issuer);
+                              } catch(error) {setError(textError(error));}
+                              finally {setBusy(false);}
+                            }}>Valider l'accord client vérifié</button>
+                          )}
                           {section === "devis" && (
                             <>
                               <button
