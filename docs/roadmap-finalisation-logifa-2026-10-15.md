@@ -228,3 +228,11 @@ Livré : retrait des quatre éditeurs JSON fiscaux, champs adresse/coordonnées,
 Les consultations servent l'original archivé et vérifié SHA-256. La variante acquittée exige un document émis, un original archivé et un solde serveur acquittable ; elle ajoute une annexe aux pages originales inchangées. Les calculs de cumul des acomptes du PDF utilisent désormais des centimes BigInt. Les modèles e-mail reprennent `invoice_number`.
 
 Validation locale : TypeScript, build Next.js et 20 tests unitaires/services (dont conservation des flux des pages PDF, rejet d'une variante non réglée, original manquant, domaine d'envoi et idempotency key sur HTTP simulé). Aucun appel Resend réel. Le premier lot `8577be4` est marqué déployé par le statut Vercel publié sur GitHub.
+
+## Lot moteur SQL reproductible et limites IA
+
+Les quatre migrations de socle appliquées ont été récupérées en lecture seule dans `supabase/baseline/`, hors du répertoire des migrations à appliquer. La recette PGlite utilise exclusivement des schémas et identités synthétiques. Elle teste acomptes 30/30/finale 40, règlements partiels/multiples, remboursement, avoir sans faux encaissement, numérotation/idempotence/antériorité, RLS et client hors entreprise.
+
+Migration **appliquée à Supabase Logifa** : `20261015094131_logifa_persistent_agent_limits`. Table privée RLS sans accès direct, wrapper authentifié et garde administrateur. Dix requêtes/heure et cinquante/jour partagées entre PDF et propositions. Compteurs en production vides après application ; aucun appel IA effectué. L'outil CLI migration échouant sur son répertoire utilisateur en lecture seule, le fichier a été préparé localement puis aligné sur la version réellement attribuée par Supabase.
+
+Validation exécutée : **33 tests**, lint de correction/sécurité JavaScript-TypeScript, TypeScript strict et build Next.js. Les commandes de test qui pointaient vers des fichiers absents ont été remplacées par les commandes exécutables ; CI étendue aux mêmes contrôles. Les tests ne remplacent pas une recette JWT Clerk/Storage distante ni la concurrence entre plusieurs connexions PostgreSQL. Budget en euros à configurer aussi côté projet OpenAI ; le quota d'appels ne constitue pas un plafond monétaire.

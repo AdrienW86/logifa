@@ -1,7 +1,7 @@
 import "server-only";
 import { agentSchema } from "./proposal";
 import { isRecord } from "../editor/contracts";
-const counts = new Map<string, { start: number; count: number }>();
+import { consumeAgentRequest } from "./quota";
 export function agentEnabled() {
   return (
     process.env.LOGIFA_OPENAI_ENABLED === "true" &&
@@ -21,14 +21,8 @@ export async function proposeWithOpenAI(
   if (!prompt.trim()) throw new Error("AGENT_PROMPT_REQUIRED");
   if (prompt.length > 10000 || input.length > 80000)
     throw new Error("AGENT_INPUT_SIZE");
-  const now = Date.now(),
-    limit = counts.get(userId);
-  if (limit && now - limit.start < 3600000 && limit.count >= 10)
-    throw new Error("AGENT_RATE_LIMIT");
-  counts.set(userId, {
-    start: limit && now - limit.start < 3600000 ? limit.start : now,
-    count: limit && now - limit.start < 3600000 ? limit.count + 1 : 1,
-  });
+  if (!userId) throw new Error("AGENT_NOT_ENABLED");
+  await consumeAgentRequest("proposal");
   let response: Response;
   try {
     response = await request("https://api.openai.com/v1/responses", {

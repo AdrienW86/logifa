@@ -23,5 +23,9 @@ jobs:
         run: npm ci
       - name: TypeScript
         run: npm run typecheck
-      - name: Billing scenarios
-        run: node --experimental-strip-types --test tests/billing/*.test.mjs
+      - name: Lint
+        run: npm run lint
+      - name: Unit and isolated PostgreSQL scenarios
+        run: npm test
+      - name: Production build (without production credentials)
+        run: npm run build

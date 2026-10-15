@@ -6,28 +6,20 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "test:email-templates": "node --experimental-strip-types --test tests/email-templates/*.test.mjs",
-    "recipe:supabase:prepare": "node scripts/prepare-supabase-local.mjs",
-    "recipe:supabase:start": "node scripts/start-supabase-local.mjs",
-    "recipe:supabase:test": "node scripts/check-logifa-supabase-local.mjs",
-    "test:supabase:preparation": "node --test tests/local-supabase/*.test.mjs",
-    "test:pwa": "node --test tests/pwa/*.test.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test:auth": "node --experimental-vm-modules --test tests/auth/access.test.mjs",
-    "test:auth:http": "node --test tests/auth/http-failclosed.test.mjs",
-    "test:baseline": "node tests/fixtures/verify.mjs",
-    "test:billing": "node --experimental-strip-types --experimental-vm-modules --test tests/billing/*.test.mjs",
-    "test:postgres": "node --test tests/postgres/recipe.test.mjs tests/postgres/workspace.test.mjs tests/postgres/document-services.test.mjs tests/postgres/client-lifecycle.test.mjs",
-    "test:editor": "node --experimental-strip-types --test tests/editor/model.test.mjs tests/editor/datasets.test.mjs tests/editor/agent.test.mjs tests/editor/agent-provider.test.mjs tests/editor/recipe-target.test.mjs tests/editor/email-key-preparation.test.mjs tests/editor/deposit.test.mjs tests/editor/managed-pdf.test.mjs tests/editor/mail.test.mjs",
-    "test:editor:browser": "node --experimental-strip-types --test tests/editor/browser.test.mjs",
+    "typecheck": "tsc --noEmit",
     "typecheck:editor": "tsc -p tsconfig.editor.json",
     "typecheck:billing": "tsc -p tsconfig.lot3a.json",
-    "prepare:companies": "node --experimental-strip-types scripts/prepare-company-import.mjs",
-    "typecheck": "tsc --noEmit",
-    "test:workspace": "node --experimental-vm-modules --test tests/workspace/security.test.mjs",
-    "test:workspace:browser": "node --test tests/workspace/browser.test.mjs"
+    "lint": "eslint app components lib utils proxy.ts",
+    "test": "node --experimental-strip-types --test tests/**/*.test.mjs",
+    "test:billing": "node --experimental-strip-types --test tests/billing/*.test.mjs",
+    "test:workspace": "node --experimental-strip-types --test tests/workspace/*.test.mjs",
+    "test:auth": "node --experimental-strip-types --test tests/auth/*.test.mjs",
+    "test:email": "node --experimental-strip-types --test tests/email/*.test.mjs",
+    "test:agent": "node --experimental-strip-types --test tests/agent/*.test.mjs",
+    "test:postgres": "node --test tests/postgres/recipe.test.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "7.9.14",
@@ -48,8 +40,10 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "esbuild": "0.28.2",
+    "eslint": "9.39.1",
     "prettier": "3.9.10",
     "supabase": "2.120.0",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.2"
   }
 }

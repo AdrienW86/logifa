@@ -1,5 +1,7 @@
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { mutationOrigin, privateJson, errorResponse } from "@/lib/workspace/http";
+import { agentError } from "@/lib/agent/errors";
+import { consumeAgentRequest } from "@/lib/agent/quota";
 import { agentEnabled } from "@/lib/agent/openai";
 import { historicalPdfSchema, validatedHistoricalPdf } from "@/lib/agent/historical-pdf";
 import { scopedRecord } from "@/lib/services/workspace";
@@ -39,6 +41,7 @@ export async function POST(request: Request) {
     const base64 = Buffer.from(bytes).toString("base64");
     const model = process.env.LOGIFA_PDF_MODEL?.trim() || process.env.OPENAI_MODEL?.trim();
     if (!model) throw new Error("AGENT_NOT_ENABLED");
+    await consumeAgentRequest("pdf_extraction");
     let response: Response;
     try {
       response = await fetch("https://api.openai.com/v1/responses", {
@@ -78,5 +81,8 @@ export async function POST(request: Request) {
       net: quote.total_net, vat: quote.total_vat, gross: quote.total_gross,
     });
     return privateJson({ ...result, quoteId: quote.id, issuerId: issuer, clientId: quote.client_id });
-  } catch (e) { return errorResponse(e); }
+  } catch (e) {
+    const failure = agentError(e);
+    return failure ? privateJson({error:failure.message,code:failure.code},failure.status) : errorResponse(e);
+  }
 }

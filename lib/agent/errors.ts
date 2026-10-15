@@ -9,6 +9,10 @@ const errors: Record<string, { status: number; message: string }> = {
     message:
       "Limite OpenAI atteinte. Vérifiez le quota et la facturation du projet avant de réessayer.",
   },
+  LOGIFA_AGENT_RATE_LIMIT: {
+    status: 429,
+    message: "Limite partagée atteinte : dix demandes par heure et cinquante par jour, y compris les extractions PDF.",
+  },
   AGENT_RATE_LIMIT: {
     status: 429,
     message: "Limite locale de dix demandes par heure atteinte.",
