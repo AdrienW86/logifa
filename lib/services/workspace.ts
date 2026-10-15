@@ -96,9 +96,17 @@ export async function workspaceRead(issuer?: string) {
     lists.document_events = events;
   } else lists.document_events = [];
   const balances: Record<string, Record<string, unknown>> = {};
-  await Promise.all(lists.invoices.filter((row) => row.lifecycle !== "draft").map(async (row) => {
-    balances[String(row.id)] = await checkedRpc(db, "logifa_invoice_balance", { p_invoice: row.id });
-  }));
+  const ids = lists.invoices.filter((x)=>x.lifecycle !== "draft").map((x)=>String(x.id));
+  if (ids.length) {
+    const result = await checkedRpc(db,"logifa_invoice_balances",{
+      p_issuer: uuid(issuer ?? ""), p_ids:ids,
+    });
+    for (const id of ids) {
+      const entry=result[id];
+      if (!isRecord(entry)) throw new Error("PERSISTENCE_BALANCE_RESPONSE_INVALID");
+      balances[id]=entry;
+    }
+  }
   const context = await checkedRpc(db, "logifa_context");
   const capability = await db.rpc("logifa_client_lifecycle", {
     p_action: "health",
