@@ -26,6 +26,7 @@ export default function ServerDocument({
   onLock,
   issueActionRef,
   onIssueAvailable,
+  onIssuedDocument,
 }: {
   draft: EditorDraft;
   userId?: string;
@@ -34,6 +35,7 @@ export default function ServerDocument({
   onLock: (locked: boolean) => void;
   issueActionRef?: { current: (() => Promise<void>) | null };
   onIssueAvailable?: (available: boolean) => void;
+  onIssuedDocument?: (doc: { id: string; issuer: string; kind: "quote" | "invoice"; number: string } | null) => void;
 }) {
   const [issuer, setIssuer] = useState(""),
     [clients, setClients] = useState<Row[]>([]),
@@ -244,6 +246,10 @@ export default function ServerDocument({
           );
           setLocked(readonly);
           onLock(readonly);
+          onIssuedDocument?.(readonly
+            ? {id:documentId,issuer:issuerId,kind:documentKind,
+                number:value(row, documentKind==="quote" ? "quote_number" : "invoice_number")}
+            : null);
           setMessage(
             readonly
               ? "Document émis : formulaire verrouillé. Les originaux sont immuables."
@@ -350,6 +356,7 @@ export default function ServerDocument({
     setLocked(true);
     onLock(true);
     onLoad({...draft,reference:number}, true);
+    onIssuedDocument?.({id:savedId,issuer,kind:"invoice",number});
     setNumberingNext((previous) => previous===null ? null : previous+1);
     setMessage("Facture "+number+" émise et verrouillée. Archivage PDF en cours…");
     try {
@@ -1156,7 +1163,8 @@ export default function ServerDocument({
                           ? "quote_number"
                           : "invoice_number",
                       );
-                onLoad({ ...draft, reference: number || draft.reference });
+                onLoad({ ...draft, reference: number || draft.reference },true);
+                onIssuedDocument?.({id,issuer,kind:"quote",number});
                 setMessage("Devis "+number+" émis. Archivage de son PDF original…");
                 try {
                   await api(`/api/quotes/${id}/pdf?issuer=${issuer}&confirmed=1`,{
