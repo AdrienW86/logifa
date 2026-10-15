@@ -491,6 +491,31 @@ export default function ServerDocument({
     >
       <h2>Cycle de vie et sauvegarde serveur</h2>
       <p role="status">{message}</p>
+      {available && draft.kind === "facture" && !locked && numberingHold && (
+        <div role="alert" className={s.card} style={{marginBottom: 14}}>
+          <strong>Numéro de facture indisponible : série à vérifier</strong>
+          <p>{numberingHold}</p>
+          <p>La facture peut être préparée et conservée, mais aucun numéro définitif
+            ne sera attribué avant la réconciliation de la série existante.</p>
+          <a href="/gestion/parametres">Ouvrir les réglages → Connexions et fiscalité</a>
+        </div>
+      )}
+      {available && draft.kind === "facture" && !locked && !numberingHold &&
+        numberingNext !== null && (
+          <p>Numérotation automatique activée. Prochain compteur indicatif :
+            <strong> {numberingNext}</strong>. La référence définitive sera réservée
+            par le serveur lors de l'émission, selon sa date.</p>
+        )}
+      {available && draft.kind === "facture" && source && !locked &&
+        sourceQuotes.some((row)=>row.id===source && row.status!=="accepted") && (
+          <div role="status" className={s.card} style={{marginBottom: 14}}>
+            <strong>Accord du client à vérifier sur le devis d'origine</strong>
+            <p>Ce devis ne possède pas encore le statut « accepté ».
+              Vérifiez l'accord client depuis la liste des devis avant d'émettre
+              la facture. L'extraction du PDF ne vaut pas acceptation.</p>
+            <a href="/gestion/devis">Ouvrir les devis de cette entreprise</a>
+          </div>
+        )}
       {available && draft.kind === "facture" && source && !locked && (
         <div className={s.card} style={{marginBottom:16}}>
           <h3>Créer la facture depuis le devis PDF</h3>
