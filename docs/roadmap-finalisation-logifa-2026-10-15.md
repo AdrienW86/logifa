@@ -216,3 +216,9 @@ GitHub Actions (typecheck et tests de facturation) **SUCCESS** et Vercel **READY
 - La validation de l'acceptation d'un devis historique, les tests bout-en-bout des paiements, les modèles d'avoirs, le vrai cycle d'email et la conformité aux plateformes agréées restent au programme.
 
 Aucune tâche nocturne récurrente n'a pu être créée dans ce fil, le compte ayant atteint sa limite de cinq automatisations actives. Les travaux effectués ici ont eu lieu pendant l'exécution de cette conversation ; ne pas présenter cette limitation comme un travail continu programmé.
+
+## Reprise vérifiée du 15 octobre — interface fiscale
+
+Voir [l'audit de reprise](audit-reprise-2026-10-15.md). La base réelle utilise désormais 4419 ; ne pas appliquer les anciens exemples de reprise à 22. Aucun compteur modifié.
+
+Livré : retrait des quatre éditeurs JSON fiscaux, champs adresse/coordonnées, conservation des clés historiques et assurances, affichage local des erreurs, séparation rue/code postal-ville client. TypeScript et deux tests de compatibilité exécutés. Recette métier authentifiée non effectuée.

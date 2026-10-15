@@ -20,6 +20,8 @@ import s from "./workspace.module.css";
 import { MailSettings, SendDocument } from "./Mail";
 import TariffCatalogue from "./TariffCatalogue";
 import InvoiceNumbering from "./InvoiceNumbering";
+import LegalDetails from "./LegalDetails";
+import { legalDetails } from "../../lib/workspace/legal-form";
 
 export type Section =
   | "dashboard"
@@ -210,41 +212,10 @@ export default function Workspace({ section }: { section: Section }) {
       if (typeof v === "string" && v !== "") payload[name] = v;
     if (form === "legal") {
       payload.reviewed = fd.get("reviewed") === "on";
-      for (const field of [
-        "insurance",
-        "legal_mentions",
-        "address",
-        "contacts",
-      ]) {
-        try {
-          payload[field] = JSON.parse(
-            String(
-              fd.get(field) || (["insurance"].includes(field) ? "[]" : "{}"),
-            ),
-          );
-        } catch {
-          setError(`JSON invalide : ${field}`);
-          return;
-        }
-      }
-    }
-    if (form === "legal") {
-      const mentions = payload.legal_mentions;
-      if (mentions && typeof mentions === "object" && !Array.isArray(mentions))
-        payload.legal_mentions = {
-          ...mentions,
-          payment_terms: String(fd.get("payment_terms") ?? ""),
-          pdf_footer: String(fd.get("pdf_footer") ?? ""),
-          manager: String(fd.get("manager") ?? ""),
-          insurance_label: String(fd.get("insurance_label") ?? ""),
-        };
-      for (const key of [
-        "payment_terms",
-        "pdf_footer",
-        "manager",
-        "insurance_label",
-      ])
-        delete payload[key];
+      Object.assign(payload, legalDetails(fd, editing));
+      for (const name of [...Object.keys(payload)])
+        if (name.startsWith("address_") || name.startsWith("contacts_") ||
+          ["payment_terms", "pdf_footer", "manager", "insurance_label"].includes(name)) delete payload[name];
       if (payload.reviewed === true) {
         const mentions = isRecord(payload.legal_mentions) ? payload.legal_mentions : {};
         if (!String(payload.siret ?? "").trim() ||
@@ -262,13 +233,19 @@ export default function Workspace({ section }: { section: Section }) {
       }
     }
     if (form === "client") {
-      try {
-        payload.addresses = JSON.parse(String(fd.get("addresses") || "[]"));
-      } catch {
-        setError("Adresses complémentaires : JSON invalide.");
-        return;
-      }
+      // Additional historical addresses retain their original shape.
+      payload.addresses = Array.isArray(editing.addresses) ? editing.addresses : [];
+      const oldFields = isRecord(editing.editor_fields) ? editing.editor_fields : {};
+      payload.editor_fields = {
+        ...oldFields, name: String(fd.get("company_name") ?? ""),
+        street: String(fd.get("billing_address") ?? ""),
+        cityZip: String(fd.get("client_city_zip") ?? ""),
+        email: String(fd.get("contact_email") ?? ""), phone: String(fd.get("phone") ?? ""),
+        workAddress: String(fd.get("work_address") ?? ""),
+      };
+      delete payload.client_city_zip;
     }
+
     if (form === "issuer") {
       const rate = String(fd.get("company_vat_rate") ?? "");
       if (!["", "0", "5.5", "10", "20"].includes(rate)) { setError("Taux de TVA invalide."); return; }
@@ -1010,6 +987,7 @@ export default function Workspace({ section }: { section: Section }) {
             }
           }}
         >
+          {error && <p role="alert" className={s.wide}>{error}</p>}
           <div className={s.formHeading}><div><p>Gestion / {form === "client" ? "Clients" : form === "issuer" ? "Entreprises" : form === "legal" ? "Fiscalité" : "Opérations"}</p><h2>{editing.id ? "Modifier" : "Créer"} · {form === "client" ? "fiche client" : form === "issuer" ? "entreprise" : form === "legal" ? "entité juridique" : form}</h2></div><button type="button" onClick={() => setForm(null)}>Fermer ✕</button></div>
           {form === "issuer" && (
             <article
@@ -1156,6 +1134,7 @@ export default function Workspace({ section }: { section: Section }) {
               {field("bank_name", "Banque")}
               {field("quote_prefix", "Préfixe des devis")}
               {field("invoice_prefix", "Préfixe des factures")}
+              <LegalDetails key={String(editing.id ?? "new")} editing={editing} />
               {[
                 "payment_terms",
                 "pdf_footer",
@@ -1182,21 +1161,6 @@ export default function Workspace({ section }: { section: Section }) {
                   />
                 </label>
               ))}
-              {["address", "contacts", "insurance", "legal_mentions"].map(
-                (name) => (
-                  <label key={name}>
-                    {name} (JSON)
-                    {
-                      <textarea
-                        name={name}
-                        defaultValue={JSON.stringify(
-                          editing[name] ?? (name === "insurance" ? [] : {}),
-                        )}
-                      />
-                    }
-                  </label>
-                ),
-              )}
               <p className={s.wide}>Cochez uniquement après avoir vérifié que l'identité, le régime fiscal, les conditions de paiement et les mentions PDF correspondent à la situation réelle de l'entreprise.</p>
               <label>
                 <span>Informations fiscales relues</span>
@@ -1219,15 +1183,13 @@ export default function Workspace({ section }: { section: Section }) {
               {field("phone", "Téléphone")}
               {field("siret", "SIRET")}
               {field("vat_number", "Numéro TVA")}
-              {field("billing_address", "Adresse de facturation")}
-              {field("work_address", "Adresse du chantier")}
-              <label>
-                Autres adresses (JSON)
-                <textarea
-                  name="addresses"
-                  defaultValue={JSON.stringify(editing.addresses ?? [])}
-                />
+              {field("billing_address", "Adresse de facturation (numéro et rue)")}
+              <label>Code postal et ville de facturation
+                <input name="client_city_zip" defaultValue={value(isRecord(editing.editor_fields) ? editing.editor_fields : {}, "cityZip")} />
               </label>
+              {field("work_address", "Adresse du chantier")}
+              {Array.isArray(editing.addresses) && editing.addresses.length > 0 &&
+                <p>Les {editing.addresses.length} adresses complémentaires existantes sont conservées.</p>}
             </>
           )}
           {form === "project" && (
