@@ -77,6 +77,7 @@ export default function ServerDocument({
   const [savedVersion, setSavedVersion] = useState("");
   const [numberingHold, setNumberingHold] = useState("");
   const [numberingNext, setNumberingNext] = useState<number | null>(null);
+  const [legalReviewed, setLegalReviewed] = useState<boolean | null>(null);
   const [clientKind, setClientKind] = useState("");
   const [clientSearch, setClientSearch] = useState("");
   const [manualDepositText, setManualDepositText] = useState("");
@@ -116,6 +117,7 @@ export default function ServerDocument({
         );
         if (!profile) throw new Error("Émetteur introuvable.");
         const legal = workspace.lists.legal_entities.find((row)=>row.id===profile.legal_entity_id);
+        setLegalReviewed(legal?.reviewed === true);
         const mapped: Company = {
           databaseId: issuerId,
           id: 0,
@@ -499,6 +501,15 @@ export default function ServerDocument({
     >
       <h2>Cycle de vie et sauvegarde serveur</h2>
       <p role="status">{message}</p>
+      {available && draft.kind === "facture" && !locked && legalReviewed === false && (
+        <div role="alert" className={s.card} style={{marginBottom: 14}}>
+          <strong>Validation fiscale nécessaire avant l'émission</strong>
+          <p>L'identité fiscale de cette entreprise est encore marquée « non relue ».
+            Vérifiez les coordonnées légales, le régime de TVA et les mentions avant
+            d'enregistrer une facture définitive.</p>
+          <a href="/gestion/entreprises">Vérifier les informations de l'entreprise</a>
+        </div>
+      )}
       {available && draft.kind === "facture" && !locked && numberingHold && (
         <div role="alert" className={s.card} style={{marginBottom: 14}}>
           <strong>Numéro de facture indisponible : série à vérifier</strong>
