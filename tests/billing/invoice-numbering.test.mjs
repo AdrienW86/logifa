@@ -8,7 +8,7 @@ test("September 2026 external invoice matches the historical series",()=>{
 });
 test("October date adds the zero-free month but two-digit day",()=>{
   assert.equal(formattedInvoiceNumber("2026-10-15",4419),"D-20261015-4419");
-  assert.equal(formattedInvoiceNumber("2026-01-02",22),"D-202612-0022");
+  assert.equal(formattedInvoiceNumber("2026-01-02",22),"D-2026102-0022");
 });
 test("reject malformed, mismatched, or impossible dates and numbers",()=>{
   assert.throws(()=>nextCounterFromExternalInvoice("D-2026930-4418","2026-10-01"),/correspond/);
