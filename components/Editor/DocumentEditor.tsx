@@ -577,7 +577,7 @@ export default function DocumentEditor({
               <>
                 <button type="button" disabled={!invoiceReady || serverLocked}
                   onClick={startInvoiceIssuance}>
-                  {serverLocked ? "Facture enregistrée" : "Enregistrer et numéroter"}
+                  {serverLocked ? "Facture émise" : "Émettre la facture"}
                 </button>
                 {!serverLocked && <button type="button" onClick={saveLocal}>
                   Conserver ma saisie <kbd>⌘ / Ctrl S</kbd>
@@ -900,8 +900,8 @@ export default function DocumentEditor({
                   Référence du {kind} *
                   {kind === "facture" ? (
                     <input value={serverLocked && draft.reference !== "BROUILLON"
-                      ? draft.reference : "Automatique à l'émission"}
-                      readOnly aria-label="Numéro fiscal automatique" />
+                      ? draft.reference : "Automatique ou saisie manuelle ci-dessous"}
+                      readOnly aria-label="Numéro fiscal" />
                   ) : (
                     <input value={draft.reference}
                       onChange={(e) => patch({ reference: e.target.value })} />
@@ -918,7 +918,7 @@ export default function DocumentEditor({
               </div>
               <p className={s.helper}>
                 {serverLocked ? "Numéro définitif enregistré par Logifa. Le document émis est verrouillé." :
-                  "Le numéro fiscal sera attribué automatiquement quand tu cliqueras sur « Enregistrer et numéroter ». Le raccourci Ctrl + S conserve uniquement la saisie en préparation."}
+                  "Le numéro est confirmé à l’émission. Pour le saisir vous-même, ouvrez « Numérotation et solutions de secours » dans la préparation serveur. Ctrl + S conserve votre saisie sur cet appareil."}
               </p>
             </section>
             <section id="prestations" className={s.section}>
@@ -1477,7 +1477,7 @@ export default function DocumentEditor({
           {kind === "facture" && storageIssuer && !serverLocked ? (
             <button type="button" disabled={!invoiceReady}
               onClick={startInvoiceIssuance}>
-              Enregistrer et numéroter la facture
+              Émettre la facture définitive
             </button>
           ) : !serverLocked ? (
             <button type="button" onClick={saveLocal}>Conserver la saisie</button>

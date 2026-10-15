@@ -32,8 +32,16 @@ export class BillingService {
     const data = kind === 'invoice' ? { ...input, document_kind: input.document_kind ?? 'classic' } : input;
     return checkedRpc(db, 'logifa_save_document', { p_kind: kind, p_id: id, p_data: data });
   }
-  async issue(kind: 'quote' | 'invoice', id: string, issueDate: string) {
+  async issue(kind: 'quote' | 'invoice', id: string, issueDate: string, manual?: {number:string;reason:string}) {
     const db = await this.db(); uuid(id); isoDate(issueDate);
+    if (manual) {
+      if (kind !== 'invoice' || !/^D-\d{7,8}-\d{4}$/.test(manual.number) ||
+        manual.reason.trim().length < 10 || manual.reason.length > 500)
+        throw new Error('LOGIFA_MANUAL_NUMBER_INVALID');
+      return checkedRpc(db, 'logifa_issue_invoice_manual', {
+        p_id:id,p_date:issueDate,p_number:manual.number,p_reason:manual.reason.trim(),
+      });
+    }
     return checkedRpc(db, 'logifa_issue_document', { p_kind: kind, p_id: id, p_date: issueDate });
   }
   async recordPayment(input: PaymentInput) {

@@ -79,6 +79,10 @@ export default function ServerDocument({
   const [savedVersion, setSavedVersion] = useState("");
   const [numberingHold, setNumberingHold] = useState("");
   const [numberingNext, setNumberingNext] = useState<number | null>(null);
+  const [manualNumberMode, setManualNumberMode] = useState(false);
+  const [manualNumber, setManualNumber] = useState("");
+  const [manualNumberReason, setManualNumberReason] = useState("");
+  const [issueUncertain, setIssueUncertain] = useState(false);
   const [legalReviewed, setLegalReviewed] = useState<boolean | null>(null);
   const [clientKind, setClientKind] = useState("");
   const [clientSearch, setClientSearch] = useState("");
@@ -100,6 +104,8 @@ export default function ServerDocument({
     let alive = true;
     const init = async () => {
       setAvailable(false);
+      setManualNumberMode(false);setManualNumber("");setManualNumberReason("");
+      setIssueUncertain(false);setNumberingHold("");setNumberingNext(null);
       const query = new URLSearchParams(location.search),
         issuerId = query.get("issuer") ?? selectedIssuer(userId);
       setIssuer(issuerId);
@@ -154,7 +160,7 @@ export default function ServerDocument({
               ? numbering.next_value : null);
           } catch {
             if (!alive) return;
-            setNumberingHold("État de la numérotation indisponible. Vérifiez les paramètres fiscaux.");
+            setMessage("Le prochain numéro n’a pas pu être chargé. Réessayez ou utilisez la saisie manuelle ; le serveur vérifiera la série à l’émission.");
           }
         }
         if (documentKind === "invoice" && query.get("fromQuote")) {
@@ -320,13 +326,19 @@ export default function ServerDocument({
       throw new Error("Réponse serveur incompatible.");
     setId(result.id);
     setRevision(result.revision);
+    // Reopening after a connection failure must recover this preparation, not create a new one.
+    const resumeUrl = new URL(location.href);
+    resumeUrl.searchParams.set("document", result.id);
+    resumeUrl.searchParams.set("issuer", issuer);
+    resumeUrl.searchParams.delete("duplicate");
+    resumeUrl.searchParams.delete("fromQuote");
+    history.replaceState(history.state, "", resumeUrl);
     setSavedVersion(version);
     onLoad(draft, true);
     setMessage("Saisie enregistrée en préparation, sans numéro fiscal.");
     return result.id;
   };
   const save = async () => {
-    if (!confirm("Conserver cette saisie en préparation, sans attribuer de numéro fiscal ?")) return;
     await persistPreparation();
   };
   const reportIssue = (message: string, level: "info" | "error" | "success") => {
@@ -334,6 +346,7 @@ export default function ServerDocument({
     onIssueFeedback?.(message, level);
   };
   const issueWithNumber = async () => {
+    if (issueUncertain) throw new Error("Vérifiez d’abord le statut de la facture avec « Vérifier le résultat ».");
     if (draft.kind !== "facture" || !issuer)
       throw new Error("Ouvrez d'abord l'espace d'une entreprise émettrice.");
     if (locked) throw new Error("Cette facture est déjà émise. Ouvrez son PDF officiel.");
@@ -352,7 +365,9 @@ export default function ServerDocument({
     if (numberingHold)
       throw new Error("Numérotation bloquée : " + numberingHold +
         ". Vérifiez la reprise de la série dans les réglages fiscaux.");
-    if (!confirm("ENREGISTRER ET ÉMETTRE DÉFINITIVEMENT cette facture ? Un numéro fiscal sera attribué. La facture ne pourra plus être modifiée librement. L'envoi au client reste séparé.")) {
+    if (manualNumberMode && (!/^D-\d{7,8}-\d{4}$/.test(manualNumber.trim()) || manualNumberReason.trim().length < 10))
+      throw new Error("Complétez le numéro manuel et le motif (10 caractères minimum) dans « Numérotation et solutions de secours ».");
+    if (!confirm("Émettre définitivement cette facture" + (manualNumberMode ? " avec le numéro " + manualNumber.trim() : " avec un numéro automatique") + " ? Elle sera verrouillée. Aucun e-mail ne sera envoyé.")) {
       reportIssue("Émission annulée. Aucun numéro de facture n'a été attribué.", "info");
       return;
     }
@@ -363,9 +378,11 @@ export default function ServerDocument({
     try {
       issued = await command("issue", {
         issuer_id: issuer, kind: "invoice", id: savedId, date: draft.date,
+        ...(manualNumberMode ? {manual_number:manualNumber.trim(),manual_reason:manualNumberReason.trim()} : {}),
       }, true);
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Émission non confirmée";
+      setIssueUncertain(true);
       if (detail.includes("LOGIFA_NUMBERING_RECONCILIATION_REQUIRED")) {
         reportIssue("Saisie conservée, mais émission bloquée : la série de numéros de cette entreprise doit être réconciliée.", "error");
         return;
@@ -391,6 +408,28 @@ export default function ServerDocument({
         " bien émise, mais archivage PDF à terminer depuis « Archiver l'original ». Aucun deuxième numéro ne doit être demandé : " +
         (error instanceof Error ? error.message : "Erreur archivage"), "error");
     }
+  };
+  const checkIssueResult = async () => {
+    if (!id || !issuer) return;
+    setBusy(true);
+    try {
+      const result = await api(`/api/workspace?issuer=${encodeURIComponent(issuer)}&document=${encodeURIComponent(id)}&kind=invoice`);
+      if (!isRecord(result.row)) throw new Error("Statut serveur illisible.");
+      const row = result.row;
+      if (row.lifecycle === "issued") {
+        const number = value(row,"invoice_number");
+        if (!number) throw new Error("Le numéro reste indisponible. Conservez votre saisie et contactez le support.");
+        setLocked(true);onLock(true);onLoad({...draft,reference:number},true);
+        onIssuedDocument?.({id,issuer,kind:"invoice",number});
+        setIssueUncertain(false);
+        reportIssue("Facture " + number + " déjà émise. Ouvrez son PDF officiel ; si nécessaire, terminez l’archivage depuis les factures.","success");
+      } else if (row.lifecycle === "draft") {
+        setIssueUncertain(false);
+        reportIssue("Vérification terminée : cette facture est toujours en préparation. Vous pouvez corriger puis réessayer l’émission ; le serveur revérifiera son état.","info");
+      } else throw new Error("Le document n’est plus une préparation modifiable. Consultez la liste des factures.");
+    } catch(error) {
+      reportIssue("Résultat toujours incertain : " + (error instanceof Error ? error.message : "serveur indisponible") + ". Exportez votre saisie et vérifiez les factures avant toute nouvelle émission.","error");
+    } finally {setBusy(false);}
   };
   const triggerNumberedIssue = async () => {
     if (busy) {
@@ -536,8 +575,49 @@ export default function ServerDocument({
       style={{ marginBottom: 20 }}
       aria-label="Document serveur"
     >
-      <h2>Cycle de vie et sauvegarde serveur</h2>
+      <h2>{locked ? "Document définitif" : "Préparer, vérifier, émettre"}</h2>
+      {!locked && <p>1. Complétez le client et les prestations. 2. Enregistrez la préparation et relisez le PDF. 3. Émettez {draft.kind === "facture" ? "la facture" : "le devis"} pour obtenir son numéro définitif. L’envoi au client se fait ensuite.</p>}
       <p role="status">{message}</p>
+      {draft.kind === "facture" && !locked && <section className={s.card} aria-label="Numérotation et solutions de secours">
+        <details open={issueUncertain || undefined}>
+        <summary>Numérotation et solutions de secours</summary>
+        <label><input type="checkbox" checked={manualNumberMode} disabled={busy || issueUncertain}
+          onChange={event=>setManualNumberMode(event.target.checked)}/> Saisir le numéro manuellement</label>
+        {manualNumberMode && <div className={s.form}>
+          <p>Saisissez le prochain numéro de la série de cette entreprise. Logifa vérifie la date, les doublons et la continuité avant de l’enregistrer définitivement.</p>
+          <label>Numéro de facture
+            <input value={manualNumber} maxLength={30} disabled={busy || issueUncertain}
+              placeholder="D-20261015-0001" onChange={event=>setManualNumber(event.target.value)}/>
+          </label>
+          <label>Motif de la saisie manuelle (10 caractères minimum)
+            <input value={manualNumberReason} maxLength={500} disabled={busy || issueUncertain}
+              placeholder="Ex. : proposition automatique indisponible" onChange={event=>setManualNumberReason(event.target.value)}/>
+          </label>
+          <p>Si la série est bloquée ou doit être reprise depuis un ancien logiciel, utilisez les réglages de numérotation ci-dessous.</p>
+        </div>}
+        <div className={s.actions}>
+          <button type="button" disabled={busy || !issuer} onClick={async()=>{
+            setBusy(true);
+            try {
+              const state=await api("/api/numbering?issuer="+encodeURIComponent(issuer));
+              setNumberingNext(typeof state.next_value==="number"?state.next_value:null);
+              setNumberingHold(state.on_hold===true?value(state,"hold_reason")||"Série à vérifier.":"");
+              reportIssue("État de la numérotation actualisé.","info");
+            } catch {reportIssue("Numérotation indisponible. Conservez ou exportez votre préparation ; vous pourrez reprendre sans perdre la saisie.","error");}
+            finally {setBusy(false);}
+          }}>Actualiser la numérotation</button>
+          {id && <button type="button" disabled={busy} onClick={()=>void checkIssueResult()}>Vérifier le résultat de l’émission</button>}
+          <button type="button" onClick={()=>{
+            const url=URL.createObjectURL(new Blob([JSON.stringify(draft,null,2)],{type:"application/json"}));
+            const link=document.createElement("a");link.href=url;link.download="logifa-facture-brouillon.json";link.click();
+            setTimeout(()=>URL.revokeObjectURL(url),10000);
+          }}>Télécharger une copie de ma saisie</button>
+          <a href="/gestion/parametres">Vérifier la série de numéros</a>
+        </div>
+        <p>Une copie de saisie permet de reprendre avec « Importer un brouillon ». Elle ne constitue pas une facture émise.</p>
+        {issueUncertain && <p role="alert">L’émission n’est pas confirmée. Vérifiez son résultat avant de réessayer ou de créer une autre facture.</p>}
+        </details>
+      </section>}
       {available && draft.kind === "facture" && !locked && legalReviewed === false && (
         <div role="alert" className={s.card} style={{marginBottom: 14}}>
           <strong>Validation fiscale nécessaire avant l'émission</strong>
@@ -565,7 +645,7 @@ export default function ServerDocument({
             })()
           }</strong>. Ce numéro est indicatif : il peut changer si une autre facture
           est émise avant celle-ci. Le numéro officiel apparaîtra automatiquement
-          dans le PDF après « Enregistrer et numéroter ».</p>
+          dans le PDF après « Émettre la facture ».</p>
         )}
       {available && draft.kind === "facture" && source && !locked &&
         sourceQuotes.some((row)=>row.id===source && row.status!=="accepted") && (
@@ -1167,9 +1247,9 @@ export default function ServerDocument({
                 </>
               )}
             {draft.kind === "facture" && (
-              <button type="button" disabled={busy || locked || !client}
+              <button type="button" disabled={busy || locked || !client || issueUncertain}
                 onClick={() => void triggerNumberedIssue()}>
-                Enregistrer et numéroter la facture
+                Émettre la facture définitive
               </button>
             )}
             <button type="button" disabled={busy || locked || !client} onClick={safe(save)}>

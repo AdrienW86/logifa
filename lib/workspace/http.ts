@@ -33,9 +33,20 @@ export function errorResponse(error: unknown): Response {
       503,
     );
   const code = message.match(/^(LOGIFA_[A-Z_]+|INPUT_[A-Z_]+|[A-Z_]+)$/)?.[0];
+  const guidance: Record<string,string> = {
+    LOGIFA_MANUAL_NUMBER_INVALID: "Vérifiez le numéro manuel et sa date. Format attendu : D-AAAAMJJ-XXXX.",
+    LOGIFA_MANUAL_NUMBER_REASON: "Indiquez le motif de la saisie manuelle (10 à 500 caractères).",
+    LOGIFA_MANUAL_NUMBER_SEQUENCE_MISMATCH: "Ce numéro ne suit pas la série actuelle. Actualisez la numérotation et vérifiez la dernière facture émise.",
+    LOGIFA_MANUAL_NUMBER_DUPLICATE: "Ce numéro existe déjà pour cette entreprise. Vérifiez les factures avant de continuer.",
+    LOGIFA_MANUAL_NUMBER_ALREADY_ISSUED: "Cette facture est déjà émise avec un autre numéro ou une autre date. Vérifiez le résultat de l’émission.",
+    LOGIFA_NUMBER_CHRONOLOGY: "La date précède la dernière facture émise. Vérifiez la date du document.",
+    LOGIFA_NUMBERING_RECONCILIATION_REQUIRED: "La série doit être vérifiée dans les réglages de numérotation. Votre préparation peut être conservée.",
+    LOGIFA_OPERATION_AND_PAYMENT_DATES_REQUIRED: "Complétez la date de prestation, l’échéance et la nature des opérations avant d’émettre.",
+    LOGIFA_FISCAL_PDF_CONFIGURATION_REQUIRED: "Complétez les coordonnées légales, les conditions de paiement et le pied de page dans les réglages de l’entreprise.",
+  };
   return privateJson(
     {
-      error: code ?? "Opération impossible. Aucune confirmation de sauvegarde.",
+      error: (code && guidance[code]) || code || "Opération impossible. Aucune confirmation de sauvegarde.",
       code,
     },
     code?.includes("CONFLICT") ? 409 : code ? 422 : 500,

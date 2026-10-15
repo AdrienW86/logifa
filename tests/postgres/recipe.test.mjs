@@ -7,6 +7,31 @@ test('isolated PostgreSQL financial workflow',async t=>{
  const db=await database();
  try{
  const c=await company(db), other=await company(db,'Autre entreprise');
+ await t.test('manual numbering preserves continuity, guards and idempotent recovery',async()=>{
+   const manualCompany=await company(db,'Saisie manuelle synthétique');
+   const doc=await draft(db,manualCompany);
+   const status=await rpc(db,'logifa_invoice_numbering',['status',manualCompany.issuer,{}]);
+   const number='D-20261015-'+String(status.next_value).padStart(4,'0');
+   const call=(n=number,date='2026-10-15',reason='Proposition automatique indisponible')=>
+     rpc(db,'logifa_issue_invoice_manual',[doc.id,date,n,reason]);
+   await assert.rejects(call(number,'2026-10-15','court'),/MANUAL_NUMBER_REASON/);
+   await assert.rejects(call('D-20261015-9999'),/SEQUENCE_MISMATCH/);
+   await assert.rejects(call(number,'2026-10-14'),/SEQUENCE_MISMATCH/);
+   await claims(db,'not_admin');
+   await assert.rejects(call(),/ADMIN|AUTH|FORBIDDEN/);
+   await claims(db,'user_test_admin');
+   const issued=await call();assert.equal(issued.number,number);
+   assert.deepEqual(await call(),issued);
+   await assert.rejects(call('D-20261015-9999'),/ALREADY_ISSUED/);
+   const second=await draft(db,manualCompany);
+   await assert.rejects(rpc(db,'logifa_issue_invoice_manual',[second.id,'2026-10-15',number,'Vérification manuelle du numéro']),/SEQUENCE_MISMATCH/);
+   const after=await rpc(db,'logifa_invoice_numbering',['status',manualCompany.issuer,{}]);
+   assert.equal(Number(after.next_value),Number(status.next_value)+1);
+   await db.exec('reset role');
+   const audit=await db.query('select count(*)::int as count from logifa_private.manual_invoice_number_entries where invoice_id=$1',[doc.id]);
+   assert.equal(audit.rows[0].count,1);
+   await db.exec('set role authenticated');
+ });
  await t.test('server enforces client company isolation',async()=>{
    await assert.rejects(draft(db,{...c,client:other.client}),/ISSUER|scope|foreign key/i);
  });

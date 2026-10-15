@@ -165,7 +165,10 @@ export async function POST(request: Request) {
       )
         throw new Error("LOGIFA_FISCAL_PDF_CONFIGURATION_REQUIRED");
       return privateJson(
-        await issueAndArchive(kind, id(data, "id"), issuer, field(data, "date")),
+        await issueAndArchive(kind, id(data, "id"), issuer, field(data, "date"),
+          data.manual_number !== undefined ? {
+            number:field(data,"manual_number").trim(),reason:field(data,"manual_reason"),
+          } : undefined),
       );
     }
     if (action === "payment") {

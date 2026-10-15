@@ -254,3 +254,7 @@ Validation : 41 tests unitaires/SQL, recette Chromium mobile étendue au choix d
 La [migration des remises](remises-migration-en-attente.md) a été appliquée à Supabase après accord explicite, version `20261015213039`. Les adaptations applicatives permettent les remises explicites, calculées au centime et plafonnées par taux de TVA. Les documents émis restent verrouillés.
 
 La [procédure de recette complète](recette-complete-2026-10-15.md) décrit le parcours, les preuves disponibles et les travaux restants. L'accueil masque désormais les entreprises désactivées ; contrôle Chromium effectué sur données synthétiques.
+
+## Simplification du parcours et secours de numérotation
+
+Le [parcours de secours](ux-secours-facturation-2026-10-15.md) ajoute une saisie manuelle du prochain numéro, vérifiée transactionnellement, la récupération du résultat d’une émission incertaine, une copie locale téléchargeable et une adresse de reprise après sauvegarde. La migration est appliquée ; 46 tests et deux recettes navigateur passent. La validation avec une session réelle reste nécessaire.
