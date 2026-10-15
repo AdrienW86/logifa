@@ -156,6 +156,9 @@ export default function DocumentEditor({
   }, []);
   const [serverLocked, setServerLocked] = useState(false);
   const [invoiceReady, setInvoiceReady] = useState(false);
+  const [serverDocument, setServerDocument] = useState<{
+    id:string;issuer:string;kind:"quote"|"invoice";number:string;
+  } | null>(null);
   const invoiceIssueRef = useRef<(() => Promise<void>) | null>(null);
   const [draft, setDraft] = useState<EditorDraft>(() => initialDraft(kind));
   const [status, setStatus] = useState(""),
@@ -179,6 +182,17 @@ export default function DocumentEditor({
   const [proposal, setProposal] = useState<ReturnType<
     typeof prepareProposal
   > | null>(null);
+  useEffect(() => {
+    if (!serverDocument || !serverLocked) return;
+    // Remove any stale local draft preview immediately after final issuance.
+    setPreview((previous) => {
+      if (previous?.url.startsWith("blob:")) URL.revokeObjectURL(previous.url);
+      return null;
+    });
+    // The official PDF remains accessible through the explicit preview action.
+    setStatus("Document " + serverDocument.number +
+      " émis. Cliquez sur « Afficher le PDF numéroté » pour charger la version officielle.");
+  }, [serverDocument, serverLocked]);
   const draftRef = useRef(draft),
     savedRef = useRef(saved),
     busyRef = useRef(false),
@@ -440,13 +454,32 @@ export default function DocumentEditor({
     }
   }
   async function createPdf(download = false) {
+    if (busyRef.current) return;
+    // After issuance, never regenerate an editable local PDF from the draft:
+    // the canonical server renderer uses the final fiscal number and snapshots.
     if (serverLocked) {
-      setStatus(
-        "Document emis : utilisez le PDF serveur ou l original archive dans le cycle de vie.",
-      );
+      if (!serverDocument || !serverDocument.number)
+        { setStatus("Référence émise indisponible : rouvrez le document depuis vos factures ou devis."); return; }
+      busyRef.current=true;
+      setBusy(true);
+      try {
+        const path = `/api/${serverDocument.kind === "invoice" ? "invoices" : "quotes"}/${encodeURIComponent(serverDocument.id)}/pdf?issuer=${encodeURIComponent(serverDocument.issuer)}`;
+        const response=await fetch(path,{credentials:"same-origin",cache:"no-store"});
+        if(!response.ok) throw new Error("PDF serveur indisponible (code "+response.status+").");
+        if (!response.headers.get("content-type")?.includes("application/pdf"))
+          throw new Error("Réponse du serveur non reconnue comme PDF.");
+        const blob=await response.blob();
+        if(!blob.size) throw new Error("PDF vide.");
+        const name=(serverDocument.kind==="invoice"?"Facture_":"Devis_")+serverDocument.number+".pdf";
+        if(download) downloadBlob(blob,name);
+        else setPreview({url:URL.createObjectURL(blob),name,base:previewSignature});
+        setStatus(download
+          ? "PDF fiscal "+serverDocument.number+" téléchargé depuis le serveur."
+          : "PDF officiel "+serverDocument.number+" chargé depuis le serveur.");
+      } catch(error) {setStatus("Impossible de récupérer le PDF définitif : "+errorMessage(error));}
+      finally {busyRef.current=false;setBusy(false);}
       return;
     }
-    if (busyRef.current) return;
     const issues = documentErrors(draft, issuers);
     setErrors(issues);
     if (issues.length) {
@@ -597,6 +630,7 @@ export default function DocumentEditor({
           onLock={setServerLocked}
           issueActionRef={invoiceIssueRef}
           onIssueAvailable={setInvoiceReady}
+          onIssuedDocument={setServerDocument}
         />
         {!historicalQuoteId && (
         <PromptComposer
@@ -1290,7 +1324,7 @@ export default function DocumentEditor({
                   disabled={busy}
                   onClick={() => createPdf(false)}
                 >
-                  Actualiser l’aperçu PDF
+                  {serverLocked ? "Afficher le PDF numéroté" : "Actualiser l’aperçu PDF"}
                 </button>
                 <button
                   type="button"
@@ -1304,9 +1338,11 @@ export default function DocumentEditor({
               {preview ? (
                 <>
                   <p className={s.helper}>
-                    {preview.base !== previewSignature
-                      ? "La saisie a changé : actualisez cet aperçu avant de vous y fier."
-                      : "Cet aperçu correspond à votre saisie."}{" "}
+                    {serverLocked
+                      ? "Document définitif numéroté : " + (serverDocument?.number || draft.reference) + "."
+                      : preview.base !== previewSignature
+                        ? "La saisie a changé : actualisez cet aperçu avant de vous y fier."
+                        : "Aperçu de préparation : aucun numéro fiscal n'est encore attribué."}{" "}
                     <a href={preview.url} target="_blank" rel="noreferrer">
                       Ouvrir le PDF dans un nouvel onglet ↗
                     </a>
@@ -1387,7 +1423,7 @@ export default function DocumentEditor({
             <p className={s.summaryNote}>
               Création manuelle
               <br />
-              Brouillon local, non émis
+              {serverLocked ? "Facture émise : " + draft.reference : "Saisie préparatoire — non émise"}
               <br />
               Règlements non vérifiés
             </p>
