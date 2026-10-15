@@ -283,41 +283,43 @@ export const generateManagedInvoice = (
     pdf.text(pdf.splitTextToSize(paymentTerms, 180), condX, bonY + 10);
   }
 
-  if (deductions.length || legalFooter.length) {
-    pdf.addPage();
+  if (contract || deductions.length || legalFooter.length) {
+    // Keep ancillary details on the last page when enough space remains,
+    // otherwise paginate safely. Avoid unconditional mostly-empty extra pages.
+    let annexY = finalY + boxHeight + 29;
+    const bottom = pageHeight - margin;
+    if (annexY + 20 > bottom) {
+      pdf.addPage();
+      annexY = margin + 4;
+    }
+    pdf.setFont("helvetica","bold");
     pdf.setFontSize(11);
     pdf.setTextColor(0);
-    let annexY = 20;
-    pdf.text("Details et mentions complementaires", 15, annexY);
+    pdf.text("Détails et mentions complémentaires",margin,annexY);
     annexY += 10;
-    if (contract) {
-      pdf.setFontSize(10);
-      pdf.text(`Reference du devis : ${contract.reference}`, 15, annexY);
-      annexY += 7;
-      pdf.text(`Montant total contractuel TTC : ${contract.totalGross.toFixed(2)} EUR`, 15, annexY);
-      annexY += 7;
-      pdf.text(`Acomptes deja factures : ${contract.previousIssuedGross.toFixed(2)} EUR`, 15, annexY);
-      annexY += 7;
-      pdf.text(`Montant facture sur cette piece : ${totalTTC.toFixed(2)} EUR`, 15, annexY);
-      annexY += 7;
-      pdf.text(`Reste a facturer (non assimilable a une dette exigible) : ${contract.remainingToInvoice.toFixed(2)} EUR`, 15, annexY);
-      annexY += 12;
-    }
-    for (const row of deductions) {
-      pdf.text(`${row.label} : ${row.amount.toFixed(2)} EUR`, 15, annexY);
-      annexY += 7;
-    }
-    pdf.text(`Net fiscal a payer : ${netDue.toFixed(2)} EUR`, 15, annexY);
-    annexY += 12;
-    for (const mention of legalFooter) {
-      const lines = pdf.splitTextToSize(mention, 180);
-      if (annexY + lines.length * 5 > 275) {
+    pdf.setFont("helvetica","normal");
+    pdf.setFontSize(9);
+    const line = (content: string) => {
+      const lines = pdf.splitTextToSize(content,usableWidth);
+      const needed = lines.length * 5 + 4;
+      if (annexY + needed > bottom) {
         pdf.addPage();
-        annexY = 20;
+        annexY = margin + 4;
       }
-      pdf.text(lines, 15, annexY);
-      annexY += lines.length * 5 + 5;
+      pdf.text(lines,margin,annexY);
+      annexY += needed;
+    };
+    if (contract) {
+      line(`Référence du devis : ${contract.reference}`);
+      line(`Montant total contractuel TTC : ${contract.totalGross.toFixed(2)} EUR`);
+      line(`Acomptes déjà facturés : ${contract.previousIssuedGross.toFixed(2)} EUR`);
+      line(`Montant facturé sur cette pièce : ${totalTTC.toFixed(2)} EUR`);
+      line(`Reste à facturer (ne constitue pas une dette exigible) : ${contract.remainingToInvoice.toFixed(2)} EUR`);
     }
+    for (const row of deductions)
+      line(`${row.label} : ${row.amount.toFixed(2)} EUR`);
+    line(`Net fiscal à payer : ${netDue.toFixed(2)} EUR`);
+    for (const mention of legalFooter) if (mention.trim()) line(mention);
   }
   // =========================
   // Sauvegarde
