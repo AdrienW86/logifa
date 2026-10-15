@@ -184,14 +184,28 @@ export default function DocumentEditor({
   > | null>(null);
   useEffect(() => {
     if (!serverDocument || !serverLocked) return;
-    // Remove any stale local draft preview immediately after final issuance.
-    setPreview((previous) => {
-      if (previous?.url.startsWith("blob:")) URL.revokeObjectURL(previous.url);
-      return null;
-    });
-    // The official PDF remains accessible through the explicit preview action.
-    setStatus("Document " + serverDocument.number +
-      " émis. Cliquez sur « Afficher le PDF numéroté » pour charger la version officielle.");
+    let active = true;
+    // Never show the stale, unnumbered local preview after issuance.
+    setPreview(null);
+    setStatus("Facture " + serverDocument.number + " émise. Chargement du PDF officiel…");
+    const path = `/api/${serverDocument.kind === "invoice" ? "invoices" : "quotes"}/${encodeURIComponent(serverDocument.id)}/pdf?issuer=${encodeURIComponent(serverDocument.issuer)}`;
+    void (async () => {
+      try {
+        const response = await fetch(path, {credentials:"same-origin",cache:"no-store"});
+        if (!response.ok || !response.headers.get("content-type")?.includes("application/pdf"))
+          throw new Error("Téléchargement du PDF émis impossible (code " + response.status + ").");
+        const blob=await response.blob();
+        if (!blob.size) throw new Error("PDF vide.");
+        if (!active) return;
+        const name=(serverDocument.kind === "invoice" ? "Facture_" : "Devis_")+serverDocument.number+".pdf";
+        setPreview({url:URL.createObjectURL(blob),name,base:"issued:"+serverDocument.number});
+        setStatus("PDF définitif " + serverDocument.number + " prêt à consulter.");
+      } catch(error) {
+        if(active) setStatus("La facture " + serverDocument.number +
+          " est émise, mais son aperçu n’a pas pu être récupéré : " + errorMessage(error));
+      }
+    })();
+    return () => {active=false;};
   }, [serverDocument, serverLocked]);
   const draftRef = useRef(draft),
     savedRef = useRef(saved),
