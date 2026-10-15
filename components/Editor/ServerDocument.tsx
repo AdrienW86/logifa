@@ -1060,6 +1060,7 @@ export default function ServerDocument({
                 Relire le PDF serveur de la version sauvegardée (BROUILLON)
               </a>
             )}
+            {draft.kind === "devis" && (
             <button
               type="button"
               disabled={busy || locked || !id || version !== savedVersion}
@@ -1096,13 +1097,21 @@ export default function ServerDocument({
                           : "invoice_number",
                       );
                 onLoad({ ...draft, reference: number || draft.reference });
-                setMessage(
-                  "Émission confirmée. Conservez maintenant le PDF original dans la bibliothèque.",
-                );
+                setMessage("Devis "+number+" émis. Archivage de son PDF original…");
+                try {
+                  await api(`/api/quotes/${id}/pdf?issuer=${issuer}&confirmed=1`,{
+                    method:"POST",
+                  });
+                  setMessage("Devis "+number+" émis, numéroté et PDF original archivé.");
+                } catch(error) {
+                  setMessage("Devis "+number+" émis, mais PDF à archiver manuellement : "+
+                    (error instanceof Error?error.message:"Erreur d'archivage"));
+                }
               })}
             >
-              Émettre la version sauvegardée
+              Émettre le devis sauvegardé
             </button>
+            )}
             {draft.kind === "facture" && kind === "final" && id && !locked &&
               (Boolean(source) || Boolean(project)) && (
               <button type="button" disabled={busy} onClick={safe(async () => {
