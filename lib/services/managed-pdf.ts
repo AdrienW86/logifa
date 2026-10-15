@@ -12,6 +12,8 @@ import {
   generateManagedInvoice,
   type ManagedPayload,
 } from "../../utils/managedInvoice";
+import { appendPaymentReceipt } from "../billing/paid-pdf";
+import { moneyMinor } from "../billing/money";
 import { value, type Row } from "../workspace/client";
 
 const decimal = (raw: unknown) => {
@@ -34,7 +36,17 @@ export async function managedInvoiceBytes(
   );
   if (invoice.lifecycle !== "issued" && invoice.lifecycle !== "draft")
     throw new Error("LOGIFA_ISSUED_INVOICE_REQUIRED");
-  const db = await databaseForAdmin(),
+  if (paid && (kind !== "invoice" || invoice.lifecycle !== "issued"))
+    throw new Error("LOGIFA_ISSUED_INVOICE_REQUIRED");
+  const db = await databaseForAdmin();
+  const archived = await db.from("document_files").select("id")
+    .eq(kind === "quote" ? "quote_id" : "invoice_id", invoiceId)
+    .eq("role", "original").maybeSingle();
+  if (archived.error) throw persistenceError(archived.error);
+  if (!paid && invoice.lifecycle === "issued" && archived.data)
+    return verifiedPdf(String(archived.data.id));
+  if (paid && !archived.data) throw new Error("LOGIFA_ORIGINAL_ARCHIVE_REQUIRED");
+  const
     balance =
       kind === "invoice"
         ? await checkedRpc(db, "logifa_invoice_balance", {
@@ -47,60 +59,6 @@ export async function managedInvoiceBytes(
           };
   if (paid && balance.is_acquittable !== true)
     throw new Error("LOGIFA_NOT_FULLY_PAID");
-  const snapshot = invoice.issuer_snapshot;
-  if (!isRecord(snapshot)) throw new Error("LOGIFA_SNAPSHOT_REQUIRED");
-  let profile: Row, entity: Row;
-  if (invoice.lifecycle === "draft") {
-    profile = snapshot;
-    const response = await db
-      .from("legal_entities")
-      .select("*")
-      .eq("id", invoice.legal_entity_id)
-      .single();
-    const raw: unknown = response.data;
-    if (response.error || !isRecord(raw))
-      throw new Error("LOGIFA_SNAPSHOT_REQUIRED");
-    entity = raw;
-  } else {
-    if (!isRecord(snapshot.profile) || !isRecord(snapshot.legal_entity))
-      throw new Error("LOGIFA_SNAPSHOT_REQUIRED");
-    profile = snapshot.profile;
-    entity = snapshot.legal_entity;
-  }
-  const client = invoice.client_snapshot;
-  if (!isRecord(client)) throw new Error("LOGIFA_SNAPSHOT_REQUIRED");
-  const mentions = entity.legal_mentions;
-  if (
-    !isRecord(mentions) ||
-    typeof mentions.payment_terms !== "string" ||
-    typeof mentions.pdf_footer !== "string" ||
-    !mentions.pdf_footer.trim()
-  )
-    throw new Error("LOGIFA_PDF_MENTIONS_REQUIRED");
-  const logo = value(profile, "logo_path");
-  let logoBytes: Uint8Array;
-  if (/^data:image\/png;base64,[a-zA-Z0-9+/=]+$/.test(logo))
-    logoBytes = Buffer.from(logo.split(",")[1], "base64");
-  else if (/^\/[a-zA-Z0-9_-]+\.png$/.test(logo))
-    logoBytes = await readFile(
-      path.join(process.cwd(), "public", logo.slice(1)),
-    );
-  else throw new Error("LOGIFA_PNG_LOGO_REQUIRED");
-  const items = await db
-    .from(kind === "quote" ? "quote_items" : "invoice_items")
-    .select("*")
-    .eq(kind === "quote" ? "quote_id" : "invoice_id", invoiceId)
-    .order("position");
-  if (items.error) throw persistenceError(items.error);
-  const rows: unknown = items.data;
-  if (!Array.isArray(rows) || !rows.every(isRecord))
-    throw new Error("PERSISTENCE_RESPONSE_INVALID");
-  const fields = isRecord(client.editor_fields) ? client.editor_fields : {};
-  const date = value(invoice, "issue_date")
-    .slice(0, 10)
-    .split("-")
-    .reverse()
-    .join("-");
   let paymentDate = "",
     paymentMethod = "";
   if (paid) {
@@ -159,6 +117,66 @@ export async function managedInvoiceBytes(
       ", ",
     );
   }
+  if (paid) {
+    const original = await verifiedPdf(String(archived.data!.id));
+    return appendPaymentReceipt(original, {
+      number: value(invoice, "invoice_number"), date: paymentDate, method: paymentMethod,
+    });
+  }
+  const snapshot = invoice.issuer_snapshot;
+  if (!isRecord(snapshot)) throw new Error("LOGIFA_SNAPSHOT_REQUIRED");
+  let profile: Row, entity: Row;
+  if (invoice.lifecycle === "draft") {
+    profile = snapshot;
+    const response = await db
+      .from("legal_entities")
+      .select("*")
+      .eq("id", invoice.legal_entity_id)
+      .single();
+    const raw: unknown = response.data;
+    if (response.error || !isRecord(raw))
+      throw new Error("LOGIFA_SNAPSHOT_REQUIRED");
+    entity = raw;
+  } else {
+    if (!isRecord(snapshot.profile) || !isRecord(snapshot.legal_entity))
+      throw new Error("LOGIFA_SNAPSHOT_REQUIRED");
+    profile = snapshot.profile;
+    entity = snapshot.legal_entity;
+  }
+  const client = invoice.client_snapshot;
+  if (!isRecord(client)) throw new Error("LOGIFA_SNAPSHOT_REQUIRED");
+  const mentions = entity.legal_mentions;
+  if (
+    !isRecord(mentions) ||
+    typeof mentions.payment_terms !== "string" ||
+    typeof mentions.pdf_footer !== "string" ||
+    !mentions.pdf_footer.trim()
+  )
+    throw new Error("LOGIFA_PDF_MENTIONS_REQUIRED");
+  const logo = value(profile, "logo_path");
+  let logoBytes: Uint8Array;
+  if (/^data:image\/png;base64,[a-zA-Z0-9+/=]+$/.test(logo))
+    logoBytes = Buffer.from(logo.split(",")[1], "base64");
+  else if (/^\/[a-zA-Z0-9_-]+\.png$/.test(logo))
+    logoBytes = await readFile(
+      path.join(process.cwd(), "public", logo.slice(1)),
+    );
+  else throw new Error("LOGIFA_PNG_LOGO_REQUIRED");
+  const items = await db
+    .from(kind === "quote" ? "quote_items" : "invoice_items")
+    .select("*")
+    .eq(kind === "quote" ? "quote_id" : "invoice_id", invoiceId)
+    .order("position");
+  if (items.error) throw persistenceError(items.error);
+  const rows: unknown = items.data;
+  if (!Array.isArray(rows) || !rows.every(isRecord))
+    throw new Error("PERSISTENCE_RESPONSE_INVALID");
+  const fields = isRecord(client.editor_fields) ? client.editor_fields : {};
+  const date = value(invoice, "issue_date")
+    .slice(0, 10)
+    .split("-")
+    .reverse()
+    .join("-");
   // Amounts already invoiced (not necessarily paid) against the same quote.
   // Do not mistake this for received payments or use the quote total as the
   // amount due on this installment invoice.
@@ -176,16 +194,16 @@ export async function managedInvoiceBytes(
     if (!Array.isArray(entries) || !entries.every(isRecord))
       throw new Error("PERSISTENCE_RESPONSE_INVALID");
     const priorMinor = entries.filter((row) => row.id !== invoiceId)
-      .reduce((sum, row) => sum + Math.round(decimal(row.total_gross) * 100), 0);
-    const fullMinor = Math.round(decimal(quote.total_gross) * 100);
-    const currentMinor = Math.round(decimal(invoice.total_gross) * 100);
-    if (fullMinor <= 0 || priorMinor + currentMinor > fullMinor)
+      .reduce((sum, row) => sum + moneyMinor(String(row.total_gross)), 0n);
+    const fullMinor = moneyMinor(String(quote.total_gross));
+    const currentMinor = moneyMinor(String(invoice.total_gross));
+    if (fullMinor <= 0n || priorMinor + currentMinor > fullMinor)
       throw new Error("DEPOSIT_EXCEEDS_CONTRACT");
     contract = {
       reference: value(quote, "quote_number").trim(),
-      totalGross: fullMinor / 100,
-      previousIssuedGross: priorMinor / 100,
-      remainingToInvoice: (fullMinor - priorMinor - currentMinor) / 100,
+      totalGross: Number(fullMinor) / 100,
+      previousIssuedGross: Number(priorMinor) / 100,
+      remainingToInvoice: Number(fullMinor - priorMinor - currentMinor) / 100,
     };
   }
   const payload: ManagedPayload = {

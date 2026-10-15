@@ -222,3 +222,9 @@ Aucune tâche nocturne récurrente n'a pu être créée dans ce fil, le compte a
 Voir [l'audit de reprise](audit-reprise-2026-10-15.md). La base réelle utilise désormais 4419 ; ne pas appliquer les anciens exemples de reprise à 22. Aucun compteur modifié.
 
 Livré : retrait des quatre éditeurs JSON fiscaux, champs adresse/coordonnées, conservation des clés historiques et assurances, affichage local des erreurs, séparation rue/code postal-ville client. TypeScript et deux tests de compatibilité exécutés. Recette métier authentifiée non effectuée.
+
+## Lot conservation des PDF et e-mails
+
+Les consultations servent l'original archivé et vérifié SHA-256. La variante acquittée exige un document émis, un original archivé et un solde serveur acquittable ; elle ajoute une annexe aux pages originales inchangées. Les calculs de cumul des acomptes du PDF utilisent désormais des centimes BigInt. Les modèles e-mail reprennent `invoice_number`.
+
+Validation locale : TypeScript, build Next.js et 20 tests unitaires/services (dont conservation des flux des pages PDF, rejet d'une variante non réglée, original manquant, domaine d'envoi et idempotency key sur HTTP simulé). Aucun appel Resend réel. Le premier lot `8577be4` est marqué déployé par le statut Vercel publié sur GitHub.

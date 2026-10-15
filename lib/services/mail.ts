@@ -157,7 +157,7 @@ async function message(issuer: string, input: Record<string, unknown>) {
     "client.email": text(client, "contact_email"),
     "document.number": text(
       record,
-      kind === "quote" ? "quote_number" : "number",
+      kind === "quote" ? "quote_number" : "invoice_number",
     ),
     "document.date": text(record, "issue_date").slice(0, 10),
     "document.total": Number(record.total_gross ?? 0).toLocaleString("fr-FR", {
