@@ -28,6 +28,7 @@ export default function ServerDocument({
   issueActionRef,
   onIssueAvailable,
   onIssuedDocument,
+  onIssueFeedback,
 }: {
   draft: EditorDraft;
   userId?: string;
@@ -37,6 +38,7 @@ export default function ServerDocument({
   issueActionRef?: { current: (() => Promise<void>) | null };
   onIssueAvailable?: (available: boolean) => void;
   onIssuedDocument?: (doc: { id: string; issuer: string; kind: "quote" | "invoice"; number: string } | null) => void;
+  onIssueFeedback?: (message: string, level: "info" | "error" | "success") => void;
 }) {
   const [issuer, setIssuer] = useState(""),
     [clients, setClients] = useState<Row[]>([]),
@@ -327,19 +329,36 @@ export default function ServerDocument({
     if (!confirm("Conserver cette saisie en préparation, sans attribuer de numéro fiscal ?")) return;
     await persistPreparation();
   };
+  const reportIssue = (message: string, level: "info" | "error" | "success") => {
+    setMessage(message);
+    onIssueFeedback?.(message, level);
+  };
   const issueWithNumber = async () => {
-    if (draft.kind !== "facture" || !issuer || !client)
-      throw new Error("Choisissez une entreprise et un client avant d'enregistrer la facture.");
-    if (!fiscal.operationDate || !fiscal.dueDate || !fiscal.operationCategory)
-      throw new Error("Renseignez la date de prestation (ou d'acompte), l'échéance et la nature des opérations.");
-    if (numberingHold) {
-      setMessage("Numéro indisponible : " + numberingHold +
-        ". Dans Couverture Catalane → Modèles et réglages → Connexions et fiscalité, validez la reprise de la série avant l'émission. La facture peut rester en préparation.");
+    if (draft.kind !== "facture" || !issuer)
+      throw new Error("Ouvrez d'abord l'espace d'une entreprise émettrice.");
+    if (locked) throw new Error("Cette facture est déjà émise. Ouvrez son PDF officiel.");
+    const missing: string[] = [];
+    if (!client) missing.push("sélection du client dans le carnet de cette entreprise");
+    if (!fiscal.operationDate) missing.push("date de prestation ou de versement de l'acompte");
+    if (!fiscal.dueDate) missing.push("date d'échéance du paiement");
+    if (!fiscal.operationCategory) missing.push("nature des opérations");
+    if (!draft.lines.some((line) => line.type === "normal"))
+      missing.push("au moins une prestation chiffrée");
+    if (missing.length)
+      throw new Error("Impossible d'enregistrer et numéroter : complétez " +
+        missing.join(", ") + " dans le formulaire.");
+    if (legalReviewed !== true)
+      throw new Error("Identité fiscale de l'entreprise non validée. Ouvrez « Modèles et réglages → Connexions et fiscalité », complétez les mentions et validez la fiche.");
+    if (numberingHold)
+      throw new Error("Numérotation bloquée : " + numberingHold +
+        ". Vérifiez la reprise de la série dans les réglages fiscaux.");
+    if (!confirm("ENREGISTRER ET ÉMETTRE DÉFINITIVEMENT cette facture ? Un numéro fiscal sera attribué. La facture ne pourra plus être modifiée librement. L'envoi au client reste séparé.")) {
+      reportIssue("Émission annulée. Aucun numéro de facture n'a été attribué.", "info");
       return;
     }
-    if (!confirm("ENREGISTRER ET ÉMETTRE DÉFINITIVEMENT cette facture ? Un numéro fiscal sera attribué. La facture ne pourra plus être modifiée librement. L'envoi au client reste séparé."))
-      return;
+    reportIssue("Vérification et sauvegarde des données avant émission…", "info");
     const savedId = await persistPreparation();
+    reportIssue("Saisie enregistrée sur le serveur. Attribution du numéro fiscal en cours…", "info");
     let issued: Row;
     try {
       issued = await command("issue", {
@@ -348,10 +367,11 @@ export default function ServerDocument({
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Émission non confirmée";
       if (detail.includes("LOGIFA_NUMBERING_RECONCILIATION_REQUIRED")) {
-        setMessage("Saisie conservée, mais émission bloquée : la série de numéros de cette entreprise doit être réconciliée avant de produire une facture réelle.");
+        reportIssue("Saisie conservée, mais émission bloquée : la série de numéros de cette entreprise doit être réconciliée.", "error");
         return;
       }
-      setMessage("Saisie conservée. Émission non confirmée : "+detail+". Vérifiez le statut serveur avant de réessayer.");
+      reportIssue("Saisie conservée. Émission non confirmée : " + detail +
+        ". Vérifiez le statut serveur avant de réessayer.", "error");
       return;
     }
     const number = value(issued,"number") || value(issued,"invoice_number");
@@ -361,23 +381,40 @@ export default function ServerDocument({
     onLoad({...draft,reference:number}, true);
     onIssuedDocument?.({id:savedId,issuer,kind:"invoice",number});
     setNumberingNext((previous) => previous===null ? null : previous+1);
-    setMessage("Facture "+number+" émise et verrouillée. Archivage PDF en cours…");
+    reportIssue("Facture " + number + " émise et verrouillée. Archivage PDF en cours…", "info");
     try {
       await api(`/api/invoices/${savedId}/pdf?issuer=${issuer}&confirmed=1`, {method:"POST"});
-      setMessage("Facture "+number+" enregistrée, numérotée et PDF original archivé. Vous pouvez l'envoyer au client.");
+      reportIssue("Facture " + number +
+        " enregistrée, numérotée et PDF original archivé. Vous pouvez l'envoyer au client.", "success");
     } catch (error) {
-      setMessage("Facture "+number+" bien émise, mais archivage PDF à terminer depuis « Archiver l'original ». Aucun deuxième numéro ne doit être demandé : "+
-        (error instanceof Error ? error.message : "Erreur archivage"));
+      reportIssue("Facture " + number +
+        " bien émise, mais archivage PDF à terminer depuis « Archiver l'original ». Aucun deuxième numéro ne doit être demandé : " +
+        (error instanceof Error ? error.message : "Erreur archivage"), "error");
+    }
+  };
+  const triggerNumberedIssue = async () => {
+    if (busy) {
+      reportIssue("Opération déjà en cours. Patientez avant de réessayer.", "info");
+      return;
+    }
+    setBusy(true);
+    onIssueFeedback?.("Vérification des conditions d'émission…", "info");
+    try {
+      await issueWithNumber();
+    } catch (error) {
+      reportIssue(error instanceof Error ? error.message : "Impossible de numéroter cette facture.", "error");
+    } finally {
+      setBusy(false);
     }
   };
   useEffect(() => {
     if (!issueActionRef) return;
-    issueActionRef.current = safe(issueWithNumber);
+    issueActionRef.current = triggerNumberedIssue;
     return () => { issueActionRef.current = null; };
   });
   useEffect(() => {
-    onIssueAvailable?.(available && !!issuer && !locked && documentKind === "invoice");
-  }, [available, issuer, locked, documentKind, onIssueAvailable]);
+    onIssueAvailable?.(available && !!issuer && !locked && !busy && documentKind === "invoice");
+  }, [available, issuer, locked, busy, documentKind, onIssueAvailable]);
   const createClient = async () => {
     if (clientKind !== "individual" && clientKind !== "professional")
       throw new Error(
@@ -723,13 +760,14 @@ export default function ServerDocument({
         />
       )}
       {available && draft.kind === "facture" && (
-        <div className={s.actions}>
+        <div className={s.actions} id="logifa-operation-fields" aria-label="Informations requises avant numérotation">
           <label>
-            Date de prestation / versement de l’acompte
+            Date de prestation / versement de l’acompte *
             <input
               type="date"
               disabled={locked}
               value={fiscal.operationDate}
+              required
               onChange={(e) =>
                 onLoad({
                   ...draft,
@@ -739,11 +777,12 @@ export default function ServerDocument({
             />
           </label>
           <label>
-            Date d’échéance du paiement
+            Date d’échéance du paiement *
             <input
               type="date"
               disabled={locked}
               value={fiscal.dueDate}
+              required
               onChange={(e) =>
                 onLoad({
                   ...draft,
@@ -766,10 +805,11 @@ export default function ServerDocument({
             />
           </label>
           <label>
-            Nature des opérations
+            Nature des opérations *
             <select
               disabled={locked}
               value={fiscal.operationCategory}
+              required
               onChange={(e) =>
                 onLoad({
                   ...draft,
@@ -1128,7 +1168,7 @@ export default function ServerDocument({
               )}
             {draft.kind === "facture" && (
               <button type="button" disabled={busy || locked || !client}
-                onClick={safe(issueWithNumber)}>
+                onClick={() => void triggerNumberedIssue()}>
                 Enregistrer et numéroter la facture
               </button>
             )}
