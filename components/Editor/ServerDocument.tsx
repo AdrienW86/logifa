@@ -15,6 +15,7 @@ import { depositProposal } from "@/lib/billing/deposit-proposal";
 import { lineTotals } from "@/lib/billing/validation";
 import { moneyMinor } from "@/lib/billing/money";
 import { suggestDeposit } from "@/lib/billing/deposit-schedule";
+import { formattedInvoiceNumber } from "@/lib/billing/invoice-numbering";
 import { documentInput } from "@/lib/workspace/input";
 import { SendDocument } from "../Workspace/Mail";
 
@@ -509,9 +510,14 @@ export default function ServerDocument({
       )}
       {available && draft.kind === "facture" && !locked && !numberingHold &&
         numberingNext !== null && (
-          <p>Numérotation automatique activée. Prochain compteur indicatif :
-            <strong> {numberingNext}</strong>. La référence définitive sera réservée
-            par le serveur lors de l'émission, selon sa date.</p>
+          <p><strong>Numéro prévisionnel (non réservé) : {
+            (() => {
+              try { return formattedInvoiceNumber(draft.date,numberingNext); }
+              catch { return "Date de facture à vérifier"; }
+            })()
+          }</strong>. Ce numéro est indicatif : il peut changer si une autre facture
+          est émise avant celle-ci. Le numéro officiel apparaîtra automatiquement
+          dans le PDF après « Enregistrer et numéroter ».</p>
         )}
       {available && draft.kind === "facture" && source && !locked &&
         sourceQuotes.some((row)=>row.id===source && row.status!=="accepted") && (
