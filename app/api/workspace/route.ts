@@ -145,6 +145,15 @@ export async function POST(request: Request) {
         (!row.operation_date || !row.due_date || !row.operation_category)
       )
         throw new Error("LOGIFA_OPERATION_AND_PAYMENT_DATES_REQUIRED");
+      // Reject an unaccepted source quote before the expensive PDF preflight.
+      // The fiscal RPC enforces this independently inside its transaction.
+      if (kind === "invoice" && row.lifecycle === "draft" &&
+          (row.document_kind === "deposit" || row.document_kind === "final") &&
+          typeof row.quote_id === "string" && row.quote_id) {
+        const quote = await scopedRecord("quotes", row.quote_id, issuer);
+        if (quote.status !== "accepted")
+          throw new Error("LOGIFA_ACCEPTED_QUOTE_REQUIRED");
+      }
       const db = await databaseForAdmin(),
         entity = await db
           .from("legal_entities")
