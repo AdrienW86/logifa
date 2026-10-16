@@ -350,6 +350,15 @@ export default function ServerDocument({
     if (draft.kind !== "facture" || !issuer)
       throw new Error("Ouvrez d'abord l'espace d'une entreprise émettrice.");
     if (locked) throw new Error("Cette facture est déjà émise. Ouvrez son PDF officiel.");
+    // A historical quote is not accepted just because it was imported or sent.
+    // Block before saving or asking for a fiscal number, with a clear path to verify evidence.
+    const linkedQuote = source ? sourceQuotes.find((row) => row.id === source) : undefined;
+    if (linkedQuote && linkedQuote.status !== "accepted") {
+      throw new Error("Le devis d'origine est encore « " +
+        (value(linkedQuote, "status") === "sent" ? "envoyé" : "non accepté") +
+        " ». Depuis Couverture Catalane → Devis, cliquez sur « Valider l'accord client vérifié » " +
+        "et renseignez la preuve réelle de l'accord. Aucune facture ne peut être émise avant cette vérification.");
+    }
     const missing: string[] = [];
     if (!client) missing.push("sélection du client dans le carnet de cette entreprise");
     if (!fiscal.operationDate) missing.push("date de prestation ou de versement de l'acompte");
@@ -382,13 +391,18 @@ export default function ServerDocument({
       }, true);
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Émission non confirmée";
-      setIssueUncertain(true);
+      // Explicit validation errors are definitive rejections, not uncertain emissions.
+      // Only unknown/network failures require checking the server before retrying.
+      const knownRejection = /\b(?:LOGIFA_[A-Z_]+|INPUT_[A-Z_]+)\b/.test(detail);
+      setIssueUncertain(!knownRejection);
       if (detail.includes("LOGIFA_NUMBERING_RECONCILIATION_REQUIRED")) {
         reportIssue("Saisie conservée, mais émission bloquée : la série de numéros de cette entreprise doit être réconciliée.", "error");
         return;
       }
-      reportIssue("Saisie conservée. Émission non confirmée : " + detail +
-        ". Vérifiez le statut serveur avant de réessayer.", "error");
+      reportIssue(knownRejection
+        ? "Émission refusée : " + detail + ". Corrigez ce point avant de réessayer."
+        : "Saisie conservée. Émission non confirmée : " + detail +
+          ". Vérifiez le statut serveur avant de réessayer.", "error");
       return;
     }
     const number = value(issued,"number") || value(issued,"invoice_number");
@@ -649,12 +663,13 @@ export default function ServerDocument({
         )}
       {available && draft.kind === "facture" && source && !locked &&
         sourceQuotes.some((row)=>row.id===source && row.status!=="accepted") && (
-          <div role="status" className={s.card} style={{marginBottom: 14}}>
-            <strong>Accord du client à vérifier sur le devis d'origine</strong>
-            <p>Ce devis ne possède pas encore le statut « accepté ».
-              Vérifiez l'accord client depuis la liste des devis avant d'émettre
-              la facture. L'extraction du PDF ne vaut pas acceptation.</p>
-            <a href="/gestion/devis">Ouvrir les devis de cette entreprise</a>
+          <div role="alert" className={s.card} style={{marginBottom: 14}}>
+            <strong>Émission bloquée : le devis d'origine n'est pas encore accepté</strong>
+            <p>Le devis historique est enregistré comme « envoyé », pas « accepté ».
+              Dans la liste des devis, utilisez « Valider l'accord client vérifié »,
+              puis indiquez la preuve de l'accord (devis signé ou échange vérifié).
+              Cette vérification ne doit pas être faite sans preuve réelle.</p>
+            <a href={`/gestion/devis?issuer=${encodeURIComponent(issuer)}`}>Ouvrir les devis et vérifier l'accord →</a>
           </div>
         )}
       {available && draft.kind === "facture" && source && !locked && (
