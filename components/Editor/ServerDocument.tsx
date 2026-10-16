@@ -345,6 +345,41 @@ export default function ServerDocument({
     setMessage(message);
     onIssueFeedback?.(message, level);
   };
+  const verifyHistoricalQuoteAgreement = async () => {
+    const quote = sourceQuotes.find((row) => row.id === source);
+    if (!issuer || !quote || quote.lifecycle !== "historical" || quote.status !== "sent") {
+      reportIssue("Seul un devis historique envoyé peut être validé depuis cet écran. Consultez les devis de l'entreprise.", "error");
+      return;
+    }
+    const evidence = window.prompt(
+      "Après avoir personnellement vérifié l'accord du client sur le devis original, indiquez sa preuve (date, devis signé ou échange vérifié). 15 caractères minimum. Ne confirmez rien sans preuve.",
+    );
+    if (evidence === null) return;
+    if (evidence.trim().length < 15) {
+      reportIssue("Décrivez la preuve de l'accord client (15 caractères minimum). Aucun statut n'a été modifié.", "error");
+      return;
+    }
+    if (!window.confirm(
+      "Confirmez-vous avoir vérifié l'accord réel du client sur le devis historique ? Cette opération trace votre attestation mais n'émet aucune facture.",
+    )) return;
+    setBusy(true);
+    try {
+      await api("/api/quotes/accept-historical", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({issuer,quote_id:source,evidence:evidence.trim(),confirmed:true}),
+      });
+      setSourceQuotes((current) => current.map((row) =>
+        row.id === source ? {...row,status:"accepted"} : row));
+      reportIssue("Accord du client vérifié et enregistré. Vous pouvez maintenant relire puis émettre la facture.", "success");
+    } catch (error) {
+      reportIssue("L'accord client n'a pas pu être enregistré : " +
+        (error instanceof Error ? error.message : "Erreur serveur") +
+        ". Aucun numéro de facture n'a été attribué.", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
   const issueWithNumber = async () => {
     if (issueUncertain) throw new Error("Vérifiez d’abord le statut de la facture avec « Vérifier le résultat ».");
     if (draft.kind !== "facture" || !issuer)
@@ -356,7 +391,7 @@ export default function ServerDocument({
     if (linkedQuote && linkedQuote.status !== "accepted") {
       throw new Error("Le devis d'origine est encore « " +
         (value(linkedQuote, "status") === "sent" ? "envoyé" : "non accepté") +
-        " ». Depuis Couverture Catalane → Devis, cliquez sur « Valider l'accord client vérifié » " +
+        " ». Vérifiez l'accord client sur le document d'origine, puis utilisez « Valider l'accord client vérifié » " +
         "et renseignez la preuve réelle de l'accord. Aucune facture ne peut être émise avant cette vérification.");
     }
     const missing: string[] = [];
@@ -669,7 +704,14 @@ export default function ServerDocument({
               Dans la liste des devis, utilisez « Valider l'accord client vérifié »,
               puis indiquez la preuve de l'accord (devis signé ou échange vérifié).
               Cette vérification ne doit pas être faite sans preuve réelle.</p>
-            <a href={`/gestion/devis?issuer=${encodeURIComponent(issuer)}`}>Ouvrir les devis et vérifier l'accord →</a>
+            {sourceQuotes.some((row)=>row.id===source && row.lifecycle==="historical" && row.status==="sent") && (
+              <button type="button" disabled={busy} onClick={() => void verifyHistoricalQuoteAgreement()}>
+                Valider l'accord client vérifié
+              </button>
+            )}
+            <a href={`/gestion/devis?issuer=${encodeURIComponent(issuer)}`} target="_blank" rel="noreferrer">
+              Consulter le devis original (nouvel onglet) →
+            </a>
           </div>
         )}
       {available && draft.kind === "facture" && source && !locked && (
